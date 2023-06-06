@@ -20,9 +20,8 @@ library(dplyr)
 
 dat<-data.frame()  #empty data frame for adding data to
 
-AKKN_drop_hauls<-c() # Alaska Knight hauls that need to be excluded
-#VEST_drop_hauls<-c(26, 27, 41, 43) # Vesteraalen hauls that need to be excluded
-NWEXP_drop_hauls<-c()               # Northwest Explorer hauls that need to be excluded
+AKKN_drop_hauls<-c(26,42)                # Alaska Knight hauls that need to be excluded
+NWEXP_drop_hauls<-c(22,25)               # Northwest Explorer hauls that need to be excluded
 
 spec<- list.files("./Data/DataFromBoats/",pattern = "\\.accdb$")    #Creates list of database objects to be fed into for-loop
 spec # it reads these in!
