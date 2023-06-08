@@ -104,3 +104,25 @@ data %>%
   mutate(thres_total = sum(clutch_perc, na.rm = T))
   
   
+##################### Quick visual check ##################################################################################################
+data %>%
+  filter(SPECIES_CODE == 69322,
+         !(VESSEL == 162 & HAUL %in% AKKN_drop_hauls), #Pulling out 2022 15 min tows 
+         !(VESSEL == 134 & HAUL %in% NWEXP_drop_hauls),
+         STATION %in% BBRKC_DIST,
+         SEX == 2,
+         CLUTCH_SIZE!=0) %>% 
+  mutate(Mat_fem_tot = sum(SAMPLING_FACTOR, na.rm = T)) ->check_dat
+View(check_dat)
+
+################### Check for crab outside of BB that might cause discrepancy between code-based count and quick check of input data #######
+data %>%
+  filter(SPECIES_CODE == 69322,
+         !(VESSEL == 162 & HAUL %in% AKKN_drop_hauls), #Pulling out 2022 15 min tows 
+         !(VESSEL == 134 & HAUL %in% NWEXP_drop_hauls),
+         !(STATION %in% BBRKC_DIST),
+         SEX == 2,
+         CLUTCH_SIZE!=0) %>% 
+  mutate(Mat_fem_tot = sum(SAMPLING_FACTOR, na.rm = T)) ->check_dat2
+View(check_dat2)
+
