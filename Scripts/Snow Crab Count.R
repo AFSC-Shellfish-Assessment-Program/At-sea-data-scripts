@@ -26,12 +26,12 @@ import <- function(filename) {
 }
 
 #Add all databases
-AKK_L1 <- import("./Data/AKKN_2023_Leg1.accdb")
-AKK_L2 <- import("./Data/AKKN_2023_Leg2.accdb")
-AKK_L3 <- import("./Data/AKKN_2023_Leg3.accdb")
-NWX_L1 <- import("./Data/NWE_2023_Leg1.accdb")
-NWX_L2 <- import("./Data/NWE_2023_Leg2.accdb")
-NWX_L3 <- import("./Data/NWE_2023_Leg3.accdb")
+AKK_L1 <- import("./Data/DataFromBoats/AKKN_2023_Leg1.accdb")
+AKK_L2 <- import("./Data/DataFromBoats/AKKN_2023_Leg2.accdb")
+AKK_L3 <- import("./Data/DataFromBoats/AKKN_2023_Leg3.accdb")
+NWX_L1 <- import("./Data/DataFromBoats/NWE_2023_Leg1.accdb")
+NWX_L2 <- import("./Data/DataFromBoats/NWE_2023_Leg2.accdb")
+NWX_L3 <- import("./Data/DataFromBoats/NWE_2023_Leg3.accdb")
 
 #Step 3: Merge data frames and sum number of snow crab caught (from tablet)
 bind_rows(AKK_L1, AKK_L2, AKK_L3, NWX_L1, NWX_L2, NWX_L3) %>% 
@@ -125,12 +125,12 @@ import2 <- function(filename) {
 }
 
 #Add all databases
-AKK_L1_s <- import2("./Data/AKKN_2023_Leg1.accdb")
-AKK_L2_s <- import2("./Data/AKKN_2023_Leg2.accdb")
-AKK_L3_s <- import2("./Data/AKKN_2023_Leg3.accdb")
-NWX_L1_s <- import2("./Data/NWE_2023_Leg1.accdb")
-NWX_L2_s <- import2("./Data/NWE_2023_Leg2.accdb")
-NWX_L3_s <- import2("./Data/NWE_2023_Leg3.accdb")
+AKK_L1_s <- import2("./Data/DataFromBoats/AKKN_2023_Leg1.accdb")
+AKK_L2_s <- import2("./Data/DataFromBoats/AKKN_2023_Leg2.accdb")
+AKK_L3_s <- import2("./Data/DataFromBoats/AKKN_2023_Leg3.accdb")
+NWX_L1_s <- import2("./Data/DataFromBoats/NWE_2023_Leg1.accdb")
+NWX_L2_s <- import2("./Data/DataFromBoats/NWE_2023_Leg2.accdb")
+NWX_L3_s <- import2("./Data/DataFromBoats/NWE_2023_Leg3.accdb")
 
 #filter by males > 101mm 
 bind_rows(AKK_L1_s, AKK_L2_s, AKK_L3_s, NWX_L1_s, NWX_L2_s, NWX_L3_s) %>% 
