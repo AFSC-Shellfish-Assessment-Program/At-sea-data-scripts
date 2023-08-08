@@ -4,7 +4,7 @@
 # ...but until that happens, here's a clunky script to track down our data
 
 #Author: Erin Fedewa
-#Last run: 7/26/23, end of Leg 3
+#Last run: 8/8/23
 
 library(RODBC)
 library(tidyverse)
@@ -29,38 +29,22 @@ import <- function(filename) {
 AKK_L1 <- import("./Data/DataFromBoats/AKKN_2023_Leg1.accdb")
 AKK_L2 <- import("./Data/DataFromBoats/AKKN_2023_Leg2.accdb")
 AKK_L3 <- import("./Data/DataFromBoats/AKKN_2023_Leg3.accdb")
+AKK_L4 <- import("./Data/DataFromBoats/AKKN_2023_Leg4.accdb")
 NWX_L1 <- import("./Data/DataFromBoats/NWE_2023_Leg1.accdb")
 NWX_L2 <- import("./Data/DataFromBoats/NWE_2023_Leg2.accdb")
 NWX_L3 <- import("./Data/DataFromBoats/NWE_2023_Leg3.accdb")
 
 #Step 3: Merge data frames and sum number of snow crab caught (from tablet)
-bind_rows(AKK_L1, AKK_L2, AKK_L3, NWX_L1, NWX_L2, NWX_L3) %>% 
-  filter(SPECIES_CODE == 68580) %>%
-  summarise(Total = sum(NUMBER_CRAB)) -> snow23 #72,005 snow crab
-
-#FOR REFERENCE (as calculated per Table 5 in past tech memos)
-#This approach is cringe-worthy, I know....
-#In 2022, total # of snow crab caught was:
-23431 + 1730 + 35851 + 18591 #79,603
-#In 2021, total # of snow crab caught was: 
-10015 + 2095 + 839 + 27922 #40,871
-#In 2019, total # of snow crab caught was: 
-76872 + 4775 + 3848 + 75800 #161,295
-#In 2018, total # of snow crab caught was: 
-202255 + 3976 + 85265 + 123887  #415,383
+bind_rows(AKK_L1, AKK_L2, AKK_L3, AKK_L4, NWX_L1, NWX_L2, NWX_L3) %>% 
+  filter(SPECIES_CODE == 68580,
+         CRUISE == 202301) %>%
+  summarise(Total = sum(NUMBER_CRAB)) -> snow23 #80,859 snow crab
 
 #Step 4: Merge data frames and sum number of tanner crab caught (from tablet)
-bind_rows(AKK_L1, AKK_L2, AKK_L3, NWX_L1, NWX_L2, NWX_L3) %>% 
-  filter(SPECIES_CODE == 68560) %>%
+bind_rows(AKK_L1, AKK_L2, AKK_L3, AKK_L4, NWX_L1, NWX_L2, NWX_L3) %>% 
+  filter(SPECIES_CODE == 68560,
+         CRUISE == 202301) %>%
   summarise(Total = sum(NUMBER_CRAB)) -> tanner23 #33,208 tanner crab
-
-#FOR REFERENCE (as calculated per Table 5 in past tech memos)
-#In 2022, total # of tanner crab (E&W) caught was:
-2161+499+1381+345+4791+593+3668+1240 #14678
-#In 2021, total # of tanner crab (E&W) caught was: 
-1801+303+828+520+5166+687+3406+1593 #14304
-#In 2019, total # of tanner crab (E&W) caught was: 
-1301+318+1059+132+5744+753+5736+1325 #16368
 
 #Quick plot 
 #Append new data to timeseries 
@@ -128,19 +112,21 @@ import2 <- function(filename) {
 AKK_L1_s <- import2("./Data/DataFromBoats/AKKN_2023_Leg1.accdb")
 AKK_L2_s <- import2("./Data/DataFromBoats/AKKN_2023_Leg2.accdb")
 AKK_L3_s <- import2("./Data/DataFromBoats/AKKN_2023_Leg3.accdb")
+AKK_L4_s <- import2("./Data/DataFromBoats/AKKN_2023_Leg4.accdb")
 NWX_L1_s <- import2("./Data/DataFromBoats/NWE_2023_Leg1.accdb")
 NWX_L2_s <- import2("./Data/DataFromBoats/NWE_2023_Leg2.accdb")
 NWX_L3_s <- import2("./Data/DataFromBoats/NWE_2023_Leg3.accdb")
 
 #filter by males > 101mm 
-bind_rows(AKK_L1_s, AKK_L2_s, AKK_L3_s, NWX_L1_s, NWX_L2_s, NWX_L3_s) %>% 
+bind_rows(AKK_L1_s, AKK_L2_s, AKK_L3_s, AKK_L4_s, NWX_L1_s, NWX_L2_s, NWX_L3_s) %>% 
   filter(SPECIES_CODE == 68580,
          SEX == 1, 
-         WIDTH > 101) %>%
-  count() -> pref #838 males > 101 vrs. 1000 in 2022, 
+         WIDTH > 101,
+         CRUISE == 202301) %>%
+  count() -> pref #855 males > 101 vrs. 1000 in 2022, 
 
 #Number of PIBKC
-bind_rows(AKK_L1_s, AKK_L2_s, AKK_L3_s, NWX_L1_s, NWX_L2_s, NWX_L3_s) %>% 
+bind_rows(AKK_L1_s, AKK_L2_s, AKK_L3_s, AKK_L4_s, NWX_L1_s, NWX_L2_s, NWX_L3_s) %>% 
   filter(SPECIES_CODE == 69323,
          c(grepl(pattern="K|J|I|H|G|F|E",STATION))) %>%
   count() -> bkc #9
