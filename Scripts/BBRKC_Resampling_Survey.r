@@ -13,6 +13,7 @@ library(RODBC)
 library(gt)
 library(webshot2)
 library(magick)
+library(gtExtras)
 
 #Step 1: Download crab data:
 #Download most recent FTP'd access database from ONGOING leg for both vessels 
