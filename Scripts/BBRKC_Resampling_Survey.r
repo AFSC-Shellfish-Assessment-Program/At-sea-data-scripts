@@ -5,7 +5,7 @@
 #NOTE: This script should ONLY be used during the survey, as haul files have 
   #not yet been created to filter out special project tows by haul type
 
-# Original Author: Erin Fedewa
+#Author: Erin Fedewa
 
 # load ----
 library(tidyverse)
@@ -15,10 +15,10 @@ library(webshot2)
 library(magick)
 library(gtExtras)
 
-#Step 1: Download crab data:
-#Download most recent FTP'd access database from ONGOING leg for both vessels 
-  #https://sftp.afsc.noaa.gov/ThinClient/WTM/public/index.html#/login
-#Add all databases to Data/DataFromBoats folder, replacing databases each time script is rerun
+#########################
+
+#Step 1: Set path for FTP'd data folder on Kodiak server
+path <- "Y:/KOD_Survey/EBS Shelf/2024/RawData/"
 
 #Step 2: Update non-standard stations sampled: (i.e. 15/30, Shelf/Slope special projects)
   #Add non-standard haul #'s from google sheet below to AKK_drop and NWX_drop objects 
@@ -27,24 +27,24 @@ library(gtExtras)
 AKK_drop <- c(18,20:23,26,42)                
 NWX_drop <- c(1,3:6,22,25) 
 
-#Step 3: Update run date
+#Step 3: Add zero crab catch stations (these are not included in the specimen table and we'll need them for a running station count)
+#Add zero catch Station ID's from google sheet below to zero catch object  
+#https://docs.google.com/spreadsheets/d/1yz9ANWaPO8634mDtfAJf8szXRdk0GyGwBDdS5cC418k/edit#gid=1916551151
+
+zero_catch <- data.frame(c("K-14", "K-08", "A-06", "D-09", "K-07", "Z-05")) %>%
+                  setNames("Station")
+
+#Step 4: Update run date
   #This date object will be used to create separate output for each new resampling script run  
 run_date <- "6_June_24_run"
 
-#Loop through and read in specimen tables from all Access Databases 
-dat<-data.frame()  #empty data frame for adding data to
+#####################
 
-spec<- list.files("./Data/DataFromBoats/",pattern = "\\.accdb$") 
+#Now read in all specimen tables from FTP'd data 
+dat <- list.files(path, pattern = "CRAB_SPECIMEN", recursive = TRUE) %>% 
+  purrr::map_df(~read.csv(paste0(path, .x)))
 
-for(i in 1:length(spec)){ # start i loop (each file)
-  path <- paste0("./Data/DataFromBoats/", spec[i], sep="")
-  x<-odbcConnectAccess2007(path)
-  out<-sqlFetch(x, "tblCRAB_SPECIMEN")
-  out<-data.frame(out)
-  dat<-rbind(dat,out)
-}
-
-#Create Look up table for Bristol Bay stations 
+#Create Look up table for Bristol Bay stations, including Z-04 
   #hard coding so this can be run on the boat w/out file dependency issues! 
 BBRKC_DIST <- data.frame("A-02","A-03","A-04","A-05","A-06","B-01","B-02","B-03","B-04","B-05","B-06",
                          "B-07","B-08","C-01","C-02","C-03","C-04","C-05","C-06","C-07","C-08","C-09","D-01",
@@ -57,7 +57,7 @@ BBRKC_DIST <- data.frame("A-02","A-03","A-04","A-05","A-06","B-01","B-02","B-03"
                          "I-07","I-08","I-09","I-10","I-11","I-12","I-13","I-14","I-15","I-16","J-01","J-02",
                          "J-03","J-04","J-05","J-06","J-07","J-08","J-09","J-10","J-11","J-12","J-13","J-14",
                          "J-15","J-16","K-01","K-02","K-03","K-04","K-05","K-06","K-07","K-08","K-09","K-10",
-                         "K-11","K-12","K-13","K-14","Z-05")
+                         "K-11","K-12","K-13","K-14","Z-05", "Z-04")
 
 #Filter for stations in BBRKC Mgmt district- dropping non-standard stations
 dat %>%
@@ -78,11 +78,12 @@ data %>%
 write.csv(stations, "./Output/Resample_station_list.csv")
 #Please open this csv and visually double check that all non-standard stations were excluded!
 
-#Number of Stations counted towards threshold
-station_count <- nrow(stations)
-stations_remaining <- length(BBRKC_DIST) - station_count 
-#Until we have a record of zero-catch stations in the specimen table, this count
-  #does NOT include zero-catch stations which may have already been sampled
+#Number of Stations remaining in BBRKC mgmt district
+station_count <- nrow(stations) #total # of positive catch stations sampled thus far
+zero_count <- zero_catch %>% #total # of zero crab catch stations sampled thus far
+                filter(Station %in% BBRKC_DIST) %>%
+                nrow()
+stations_remaining <- length(BBRKC_DIST) - (station_count + zero_count) 
 
 #Number of Mature Females  
 data %>%
@@ -121,6 +122,8 @@ data %>%
             total_mature = mean(Mat_fem_tot)) %>%
   mutate(thres_total = sum(clutch_perc, na.rm = T)) -> clutch_thresh
 
+###########################
+
 #Create summary tables and save as output by run date
   
 #Table 1: total mature females/total unmolted/threshold
@@ -139,7 +142,8 @@ data %>%
   gt() %>%
   tab_header(
     title = "BBRKC Resampling Threshold",
-    subtitle = run_date) %>%
+    subtitle = paste0(stations_remaining, " stations remaining in BBRKC Mgmt District")) %>%
+  tab_caption(caption = md(run_date)) %>%
   tab_style(locations = cells_body(columns = `Threshold (%)`),
             style = cell_fill(color = "lightblue")) %>%
   opt_table_lines() -> table1
@@ -151,8 +155,9 @@ clutch_thresh %>%
            Count = thresh_fem_sum) %>%
 gt() %>%
   tab_header(
-      title = "BBRKC Resampling Threshold By Clutch Code",
-      subtitle = run_date) %>% 
+    title = "BBRKC Resampling Threshold",
+    subtitle = paste0(stations_remaining, " stations remaining in BBRKC Mgmt District")) %>%
+  tab_caption(caption = md(run_date)) %>%
       grand_summary_rows(columns = `% of Mature Females`, 
                        fns = list(label = "RUNNING THRESHOLD", id = "totals", fn = "sum")) %>%
     tab_style(locations = cells_grand_summary(),
@@ -165,5 +170,3 @@ gt_two_column_layout(listed_tables, output = "save",
                      filename = paste0(run_date, "_THRESHOLD.png"),
                       path = "./Output") 
 
-#Delete Access Databases for next upload/run
-unlink("./Data/DataFromBoats/*", recursive = TRUE, force = TRUE)
