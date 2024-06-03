@@ -14,25 +14,29 @@ library(gt)
 library(webshot2)
 library(magick)
 library(gtExtras)
+library(googlesheets4)
 
 #########################
 
-#Step 1: Set path for FTP'd data folder on Kodiak server
+#Step 1: Set path for FTP'd data folder on Kodiak server and read in google sheet for non-standard station tracking
 path <- "Y:/KOD_Survey/EBS Shelf/2024/RawData/"
 
-#Step 2: Update non-standard stations sampled: (i.e. 15/30, Shelf/Slope special projects)
-  #Add non-standard haul #'s from google sheet below to AKK_drop and NWX_drop objects 
-#https://docs.google.com/spreadsheets/d/1yz9ANWaPO8634mDtfAJf8szXRdk0GyGwBDdS5cC418k/edit#gid=1916551151
+sheet <- read_sheet("https://docs.google.com/spreadsheets/d/1yz9ANWaPO8634mDtfAJf8szXRdk0GyGwBDdS5cC418k/edit#gid=1916551151",
+                    "Non-standard Station Tracking")
 
-AKK_drop <- c(18,20:23,26,42)                
-NWX_drop <- c(1,3:6,22,25) 
+#Step 2: Update non-standard stations sampled: (i.e. 15/30, Shelf/Slope special projects)
+  #Update non-standard station list automatically from google sheet
+non_standard_stations <- as.data.frame(sheet[-c(1:3), c(1:3)]) %>%
+                         setNames(c("VESSEL", "LEG", "HAUL"))
+
+AKK_drop <- non_standard_stations %>% dplyr::filter(VESSEL == "AKK") %>% dplyr::select(HAUL) 
+NWE_drop <- non_standard_stations %>% dplyr::filter(VESSEL == "NWE") %>% dplyr::select(HAUL) 
 
 #Step 3: Add zero crab catch stations (these are not included in the specimen table and we'll need them for a running station count)
-#Add zero catch Station ID's from google sheet below to zero catch object  
-#https://docs.google.com/spreadsheets/d/1yz9ANWaPO8634mDtfAJf8szXRdk0GyGwBDdS5cC418k/edit#gid=1916551151
-
-zero_catch <- data.frame(c("K-14", "K-08", "A-06", "D-09", "K-07", "Z-05")) %>%
-                  setNames("Station")
+  #Update zero-catch station list automatically from google sheet
+zero_catch <- sheet[-c(1:3), c(5:7)] %>%
+              setNames(c("VESSEL", "LEG", "STATION")) %>%
+              dplyr::filter(!nchar(STATION) > 4 & !is.na(VESSEL))
 
 #Step 4: Update run date
   #This date object will be used to create separate output for each new resampling script run
@@ -59,12 +63,12 @@ BBRKC_DIST <- data.frame("A-02","A-03","A-04","A-05","A-06","B-01","B-02","B-03"
                          "I-07","I-08","I-09","I-10","I-11","I-12","I-13","I-14","I-15","I-16","J-01","J-02",
                          "J-03","J-04","J-05","J-06","J-07","J-08","J-09","J-10","J-11","J-12","J-13","J-14",
                          "J-15","J-16","K-01","K-02","K-03","K-04","K-05","K-06","K-07","K-08","K-09","K-10",
-                         "K-11","K-12","K-13","K-14","Z-05", "Z-04")
+                         "K-11","K-12","K-13","K-14","Z-05","Z-04")
 
 #Filter for stations in BBRKC Mgmt district- dropping non-standard stations
 data <- dat %>%
-        filter(!(VESSEL == 162 & HAUL %in% AKK_drop),  
-               !(VESSEL == 134 & HAUL %in% NWX_drop)) %>%
+        dplyr::filter(!(VESSEL == 162 & HAUL %in% AKK_drop$HAUL),  
+                      !(VESSEL == 134 & HAUL %in% NWE_drop$HAUL)) %>%
         filter(str_detect(STATION, "-")) %>% #additional filter to remove any corner stations
         #Standardize station name notation to ensure there were no station name tablet entry errors  
         separate(STATION, sep = "-", into = c("col", "row")) %>%
@@ -83,7 +87,7 @@ write.csv(stations, "./Output/Resample_station_list.csv")
 #Number of Stations remaining in BBRKC mgmt district
 station_count <- nrow(stations) #total # of positive catch stations sampled thus far
 zero_count <- zero_catch %>% #total # of zero crab catch stations sampled thus far
-              filter(Station %in% BBRKC_DIST) %>%
+              filter(STATION %in% BBRKC_DIST) %>%
               nrow()
 stations_remaining <- length(BBRKC_DIST) - (station_count + zero_count) 
 
