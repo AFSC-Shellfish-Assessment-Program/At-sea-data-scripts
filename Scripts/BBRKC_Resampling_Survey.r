@@ -71,8 +71,9 @@ data <- dat %>%
                       !(VESSEL == 134 & HAUL %in% NWE_drop$HAUL)) %>%
         filter(str_detect(STATION, "-")) %>% #additional filter to remove any corner stations
         #Standardize station name notation to ensure there were no station name tablet entry errors  
-        separate(STATION, sep = "-", into = c("col", "row")) %>%
-        mutate(row = sprintf("%02d", as.numeric(row))) %>% #this will drop any "-B" 15 min tow stations
+        separate(STATION, sep = "-", into = c("col", "row", "tow")) %>%
+        filter(is.na(tow)) %>% #this will drop any "-B" 15 min tow stations
+        select(-c(tow)) %>%
         unite("STATION", col:row, sep = "-") %>%
         filter(STATION %in% BBRKC_DIST)
 
