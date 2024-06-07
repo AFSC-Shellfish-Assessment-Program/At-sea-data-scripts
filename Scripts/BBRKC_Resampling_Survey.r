@@ -82,7 +82,7 @@ data <- dat %>%
 stations <- data %>%
             select(CRUISE, VESSEL, HAUL, STATION) %>%
             distinct(CRUISE, VESSEL, HAUL, STATION)
-write.csv(stations, "./Output/Resample_station_list.csv")
+write.csv(stations, "./Output/Resample_station_list.csv", row.names = FALSE)
 #Please open this csv and visually double check that all non-standard stations were excluded!
 
 #Number of Stations remaining in BBRKC mgmt district
@@ -175,5 +175,5 @@ table2 <- clutch_thresh %>%
 listed_tables <- list(table1, table2)
 gt_two_column_layout(listed_tables, output = "save", 
                      filename = paste0(run_date, "_THRESHOLD.png"),
-                      path = "./Output") 
+                     path = "./Output") 
 
