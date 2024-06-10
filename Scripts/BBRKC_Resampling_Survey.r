@@ -113,9 +113,10 @@ thresh_fem_sum <- data %>%
                   filter(SPECIES_CODE == 69322,
                          SEX == 2,
                          CLUTCH_SIZE!=0) %>% 
-                  mutate(clutch = ifelse(EGG_CONDITION==2, "Eyed",
-                                         ifelse(EGG_CONDITION==4 | EGG_CONDITION==0 & CLUTCH_SIZE==1, "Barren",
-                                                ifelse(EGG_CONDITION==5, "Hatching", NA)))) %>%
+                  mutate(clutch = case_when((EGG_CONDITION==2 ~ "Eyed"),
+                                            ((EGG_CONDITION==4 | EGG_CONDITION==0) & CLUTCH_SIZE==1 ~ "Barren"),
+                                            (EGG_CONDITION==5 ~ "Hatching"),
+                                            TRUE ~ NA)) %>%
                   filter(!is.na(clutch)) %>%
                   summarise(clutch_sum = ((round(sum(SAMPLING_FACTOR,na.rm = T)))))
 
@@ -128,9 +129,10 @@ clutch_thresh <- data %>%
                         SEX == 2,
                         CLUTCH_SIZE!=0) %>% 
                  mutate(Mat_fem_tot = sum(SAMPLING_FACTOR, na.rm = T)) %>%
-                 mutate(clutch = ifelse(EGG_CONDITION==2, "Eyed",
-                                       ifelse(EGG_CONDITION==4 | EGG_CONDITION==0 & CLUTCH_SIZE==1, "Barren",
-                                               ifelse(EGG_CONDITION==5, "Hatching", NA)))) %>%
+                 mutate(clutch = case_when((EGG_CONDITION==2 ~ "Eyed"),
+                                           ((EGG_CONDITION==4 | EGG_CONDITION==0) & CLUTCH_SIZE==1 ~ "Barren"),
+                                           (EGG_CONDITION==5 ~ "Hatching"),
+                                           TRUE ~ NA)) %>%
                  filter(!is.na(clutch)) %>%
                  group_by(clutch) %>%
                  summarise(thresh_fem_sum = ((round(sum(SAMPLING_FACTOR,na.rm = T)))),
@@ -148,19 +150,23 @@ table1 <- data %>%
                  SEX == 2,
                  CLUTCH_SIZE!=0) %>% 
           mutate(Mat_fem_tot = sum(SAMPLING_FACTOR, na.rm = T)) %>%
-          mutate(clutch = ifelse(EGG_CONDITION==2, "Eyed",
-                                 ifelse(EGG_CONDITION==4 | EGG_CONDITION==0 & CLUTCH_SIZE==1, "Barren",
-                                        ifelse(EGG_CONDITION==5, "Hatching", NA)))) %>%
+          mutate(clutch = case_when((EGG_CONDITION==2 ~ "Eyed"),
+                                    ((EGG_CONDITION==4 | EGG_CONDITION==0) & CLUTCH_SIZE==1 ~ "Barren"),
+                                    (EGG_CONDITION==5 ~ "Hatching"),
+                                    TRUE ~ NA)) %>%
           filter(!is.na(clutch)) %>%
-          summarise(`Total Barren/Hatching Females` = ((round(sum(SAMPLING_FACTOR,na.rm = T)))),
-                    `Total Mature Females` = mean(Mat_fem_tot),
+          summarise(`Total Mature Females` = mean(Mat_fem_tot),
+                    `Total Barren/Hatching Females` = ((round(sum(SAMPLING_FACTOR,na.rm = T)))),
                     `Threshold (%)` = ((round(sum(SAMPLING_FACTOR,na.rm = T)))/mean(Mat_fem_tot))*100) %>%
           gt() %>%
+          cols_width(starts_with("Total M") ~ px(150),
+                     starts_with("Total B") ~ px(200),
+                     starts_with("Threshold") ~ px(150)) %>%
           tab_header(title = "BBRKC Resampling Threshold",
                      subtitle = paste0(stations_remaining, " stations remaining in BBRKC Mgmt District")) %>%
           tab_caption(caption = md(run_date)) %>%
-          tab_footnote(footnote ="*preliminary data that have not been through QA/QC") %>%
-          tab_options(footnotes.font.size = 10) %>%
+          # tab_footnote(footnote ="*preliminary data that have not been through QA/QC") %>%
+          # tab_options(footnotes.font.size = 10) %>%
           tab_style(locations = cells_body(columns = `Threshold (%)`),
                     style = cell_fill(color = "lightblue")) %>%
           opt_table_lines()
@@ -171,20 +177,24 @@ table2 <- clutch_thresh %>%
           rename(`% of Mature Females` = clutch_perc, `Clutch Code` = clutch,
                  Count = thresh_fem_sum) %>%
           gt() %>%
-            tab_header(title = "BBRKC Resampling Threshold",
-                       subtitle = paste0(stations_remaining, " stations remaining in BBRKC Mgmt District")) %>%
-            tab_caption(caption = md(run_date)) %>%
-            grand_summary_rows(columns = `% of Mature Females`, 
-                               fns = list(label = "RUNNING THRESHOLD", id = "totals", fn = "sum")) %>%
-            tab_footnote(footnote ="*preliminary data that have not been through QA/QC") %>%
-            tab_options(footnotes.font.size = 10) %>%
-            tab_style(locations = cells_grand_summary(),
-                      style = cell_fill(color = "lightblue")) %>% 
-            opt_table_lines()
+          # tab_header(title = "BBRKC Resampling Threshold",
+          #            subtitle = paste0(stations_remaining, " stations remaining in BBRKC Mgmt District")) %>%
+          # tab_caption(caption = md(run_date)) %>%
+          grand_summary_rows(columns = `% of Mature Females`, 
+                             fns = list(label = "RUNNING THRESHOLD", id = "totals", fn = "sum")) %>%
+          cols_width(starts_with("Clutch") ~ px(100),
+                     starts_with("Count") ~ px(100),
+                     ends_with("Females") ~ px(150),
+                     everything() ~ px(150)) %>%
+          tab_footnote(footnote ="*preliminary data that have not been through QA/QC") %>%
+          tab_options(footnotes.font.size = 10) %>%
+          tab_style(locations = cells_grand_summary(),
+                    style = cell_fill(color = "lightblue")) %>% 
+          opt_table_lines()
     
 #Now combine tables and save
 listed_tables <- list(table1, table2)
-gt_two_column_layout(listed_tables, output = "save", vwidth = 500,
+gt_two_column_layout(listed_tables, output = "save", vwidth = 518,
                      filename = "Resampling_threshold_tables.png",
                      path = "./Output") 
 
