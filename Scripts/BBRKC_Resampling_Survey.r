@@ -19,6 +19,7 @@ library(googlesheets4)
 #########################
 
 #Step 1: Set path for FTP'd data folder on Kodiak server and read in google sheet for non-standard station tracking
+#**If connecting to the google sheet doesn't work, see Step 3.5 below**
 path <- "Y:/KOD_Survey/EBS Shelf/2024/RawData/"
 
 sheet <- read_sheet("https://docs.google.com/spreadsheets/d/1yz9ANWaPO8634mDtfAJf8szXRdk0GyGwBDdS5cC418k/edit#gid=1916551151",
@@ -37,6 +38,14 @@ NWE_drop <- non_standard_stations %>% dplyr::filter(VESSEL == "NWE") %>% dplyr::
 zero_catch <- sheet[-c(1:3), c(5:7)] %>%
               setNames(c("VESSEL", "LEG", "STATION")) %>%
               dplyr::filter(!nchar(STATION) > 4 & !is.na(VESSEL))
+
+#Step 3.5: If connecting to the google sheet doesn't work -- 
+  #Update the hauls on the following lines of code and run them instead of lines 25-40 to designate AKK_drop, NWE_drop, and zero_catch
+# AKK_drop <- as.data.frame(c(1:17,23,25)) %>% setNames("HAUL")           
+# NWE_drop <- as.data.frame(c(1:16,21,23,28:29,37,39)) %>% setNames("HAUL") 
+# 
+# zero_catch <- data.frame(c("J-15", "K-14", "H-16", "I-16", "K-13")) %>% setNames("STATION")
+
 
 #Step 4: Update run date
   #This date object will be used to create separate output for each new resampling script run
@@ -67,7 +76,7 @@ BBRKC_DIST <- data.frame("A-02","A-03","A-04","A-05","A-06","B-01","B-02","B-03"
 
 #Filter for stations in BBRKC Mgmt district- dropping non-standard stations
 data <- dat %>%
-        dplyr::filter(!(VESSEL == 162 & HAUL %in% AKK_drop$HAUL),  
+        dplyr::filter(!(VESSEL == 162 & HAUL %in% AKK_drop$HAUL),
                       !(VESSEL == 134 & HAUL %in% NWE_drop$HAUL)) %>%
         filter(str_detect(STATION, "-")) %>% #additional filter to remove any corner stations
         #Standardize station name notation to ensure there were no station name tablet entry errors  
@@ -176,6 +185,6 @@ table2 <- clutch_thresh %>%
 #Now combine tables and save
 listed_tables <- list(table1, table2)
 gt_two_column_layout(listed_tables, output = "save", vwidth = 500,
-                     filename = "Threshold_tables.png",
+                     filename = "Resampling_threshold_tables.png",
                      path = "./Output") 
 
