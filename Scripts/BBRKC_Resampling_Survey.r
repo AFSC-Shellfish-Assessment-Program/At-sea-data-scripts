@@ -41,7 +41,7 @@ zero_catch <- sheet[-c(1:3), c(5:7)] %>%
 #Step 4: Update run date
   #This date object will be used to create separate output for each new resampling script run
   #Automatically updates based on the date run
-run_date <- paste(format(Sys.time(),'%d'), format(Sys.time(),'%B'), format(Sys.time(),'%Y'), "run", sep = "_")
+run_date <- paste(format(Sys.time(),'%d'), format(Sys.time(),'%B'), format(Sys.time(),'%Y'), "run", sep = " ")
 
 
 #####################
@@ -147,10 +147,11 @@ table1 <- data %>%
                     `Total Mature Females` = mean(Mat_fem_tot),
                     `Threshold (%)` = ((round(sum(SAMPLING_FACTOR,na.rm = T)))/mean(Mat_fem_tot))*100) %>%
           gt() %>%
-          tab_header(
-            title = "BBRKC Resampling Threshold",
-            subtitle = paste0(stations_remaining, " stations remaining in BBRKC Mgmt District")) %>%
+          tab_header(title = "BBRKC Resampling Threshold",
+                     subtitle = paste0(stations_remaining, " stations remaining in BBRKC Mgmt District")) %>%
           tab_caption(caption = md(run_date)) %>%
+          tab_footnote(footnote ="*preliminary data that have not been through QA/QC") %>%
+          tab_options(footnotes.font.size = 10) %>%
           tab_style(locations = cells_body(columns = `Threshold (%)`),
                     style = cell_fill(color = "lightblue")) %>%
           opt_table_lines()
@@ -161,19 +162,20 @@ table2 <- clutch_thresh %>%
           rename(`% of Mature Females` = clutch_perc, `Clutch Code` = clutch,
                  Count = thresh_fem_sum) %>%
           gt() %>%
-            tab_header(
-              title = "BBRKC Resampling Threshold",
-              subtitle = paste0(stations_remaining, " stations remaining in BBRKC Mgmt District")) %>%
+            tab_header(title = "BBRKC Resampling Threshold",
+                       subtitle = paste0(stations_remaining, " stations remaining in BBRKC Mgmt District")) %>%
             tab_caption(caption = md(run_date)) %>%
-                grand_summary_rows(columns = `% of Mature Females`, 
-                                 fns = list(label = "RUNNING THRESHOLD", id = "totals", fn = "sum")) %>%
-              tab_style(locations = cells_grand_summary(),
-                style = cell_fill(color = "lightblue")) %>% 
+            grand_summary_rows(columns = `% of Mature Females`, 
+                               fns = list(label = "RUNNING THRESHOLD", id = "totals", fn = "sum")) %>%
+            tab_footnote(footnote ="*preliminary data that have not been through QA/QC") %>%
+            tab_options(footnotes.font.size = 10) %>%
+            tab_style(locations = cells_grand_summary(),
+                      style = cell_fill(color = "lightblue")) %>% 
             opt_table_lines()
     
 #Now combine tables and save
 listed_tables <- list(table1, table2)
-gt_two_column_layout(listed_tables, output = "save", 
-                     filename = paste0(run_date, "_THRESHOLD.png"),
+gt_two_column_layout(listed_tables, output = "save", vwidth = 500,
+                     filename = "Threshold_tables.png",
                      path = "./Output") 
 
