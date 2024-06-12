@@ -85,6 +85,8 @@ data <- dat %>%
         select(-c(tow)) %>%
         unite("STATION", col:row, sep = "-") %>%
         filter(STATION %in% BBRKC_DIST)
+        # Ignore the warning message:
+        # "Expected 3 pieces. Missing pieces filled with `NA`"
 
 #Output csv for stations used in calculating resampling threshold
   #DOES NOT include zero catch stations
@@ -156,7 +158,7 @@ table1 <- data %>%
                                     TRUE ~ NA)) %>%
           filter(!is.na(clutch)) %>%
           summarise(`Total Mature Females` = mean(Mat_fem_tot),
-                    `Total Barren/Hatching Females` = ((round(sum(SAMPLING_FACTOR,na.rm = T)))),
+                    `Total Barren/Eyed/ Hatching Females` = ((round(sum(SAMPLING_FACTOR,na.rm = T)))),
                     `Threshold (%)` = ((round(sum(SAMPLING_FACTOR,na.rm = T)))/mean(Mat_fem_tot))*100) %>%
           gt() %>%
           cols_width(starts_with("Total M") ~ px(150),
