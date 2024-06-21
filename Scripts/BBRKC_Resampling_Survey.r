@@ -44,7 +44,7 @@ zero_catch <- sheet[-c(1:3), c(5:7)] %>%
 AKK_drop <- as.data.frame(c(1:17,23,25,45)) %>% setNames("HAUL")           
 NWE_drop <- as.data.frame(c(1:16,21,23,28:29,37,39,60)) %>% setNames("HAUL") 
 # 
-zero_catch <- data.frame(c("J-15", "K-14", "H-16", "I-16", "K-13","L-09","L-08","M-08","N-07","M-07","L-07","K-07","A-06")) %>% setNames("STATION")
+zero_catch <- data.frame(c("J-15", "K-14", "H-16", "I-16", "K-13","L-09","L-08","M-08","N-07","M-07","L-07","K-07","A-06","B-07")) %>% setNames("STATION")
 
 
 #Step 4: Update run date
