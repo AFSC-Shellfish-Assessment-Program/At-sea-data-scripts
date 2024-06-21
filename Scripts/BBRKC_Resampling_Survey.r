@@ -5,7 +5,7 @@
 #NOTE: This script should ONLY be used during the survey, as haul files have 
   #not yet been created to filter out special project tows by haul type
 
-# Original Author: Erin Fedewa
+#Author: Erin Fedewa
 
 # load ----
 library(tidyverse)
@@ -14,37 +14,52 @@ library(gt)
 library(webshot2)
 library(magick)
 library(gtExtras)
+library(googlesheets4)
 
-#Step 1: Download crab data:
-#Download most recent FTP'd access database from ONGOING leg for both vessels 
-  #https://sftp.afsc.noaa.gov/ThinClient/WTM/public/index.html#/login
-#Add all databases to Data/DataFromBoats folder, replacing databases each time script is rerun
+#########################
+
+#Step 1: Set path for FTP'd data folder on Kodiak server and read in google sheet for non-standard station tracking
+#**If connecting to the google sheet doesn't work, see Step 3.5 below**
+path <- "Y:/KOD_Survey/EBS Shelf/2024/RawData/"
+
+sheet <- read_sheet("https://docs.google.com/spreadsheets/d/1yz9ANWaPO8634mDtfAJf8szXRdk0GyGwBDdS5cC418k/edit#gid=1916551151",
+                    "Non-standard Station Tracking")
 
 #Step 2: Update non-standard stations sampled: (i.e. 15/30, Shelf/Slope special projects)
-  #Add non-standard haul #'s from google sheet below to AKK_drop and NWX_drop objects 
-#https://docs.google.com/spreadsheets/d/1yz9ANWaPO8634mDtfAJf8szXRdk0GyGwBDdS5cC418k/edit#gid=1916551151
+  #Update non-standard station list automatically from google sheet
+non_standard_stations <- as.data.frame(sheet[-c(1:3), c(1:3)]) %>%
+                         setNames(c("VESSEL", "LEG", "HAUL"))
 
-AKK_drop <- c(18,20:23,26,42)                
-NWX_drop <- c(1,3:6,22,25) 
+AKK_drop <- non_standard_stations %>% dplyr::filter(VESSEL == "AKK") %>% dplyr::select(HAUL) 
+NWE_drop <- non_standard_stations %>% dplyr::filter(VESSEL == "NWE") %>% dplyr::select(HAUL) 
 
-#Step 3: Update run date
-  #This date object will be used to create separate output for each new resampling script run  
-run_date <- "6_June_24_run"
+#Step 3: Add zero crab catch stations (these are not included in the specimen table and we'll need them for a running station count)
+  #Update zero-catch station list automatically from google sheet
+zero_catch <- sheet[-c(1:3), c(5:7)] %>%
+              setNames(c("VESSEL", "LEG", "STATION")) %>%
+              dplyr::filter(!nchar(STATION) > 4 & !is.na(VESSEL))
 
-#Loop through and read in specimen tables from all Access Databases 
-dat<-data.frame()  #empty data frame for adding data to
+#Step 3.5: If connecting to the google sheet doesn't work -- 
+  #Update the hauls on the following lines of code and run them instead of lines 25-40 to designate AKK_drop, NWE_drop, and zero_catch
+# AKK_drop <- as.data.frame(c(1:17,23,25)) %>% setNames("HAUL")           
+# NWE_drop <- as.data.frame(c(1:16,21,23,28:29,37,39)) %>% setNames("HAUL") 
+# 
+# zero_catch <- data.frame(c("J-15", "K-14", "H-16", "I-16", "K-13")) %>% setNames("STATION")
 
-spec<- list.files("./Data/DataFromBoats/",pattern = "\\.accdb$") 
 
-for(i in 1:length(spec)){ # start i loop (each file)
-  path <- paste0("./Data/DataFromBoats/", spec[i], sep="")
-  x<-odbcConnectAccess2007(path)
-  out<-sqlFetch(x, "tblCRAB_SPECIMEN")
-  out<-data.frame(out)
-  dat<-rbind(dat,out)
-}
+#Step 4: Update run date
+  #This date object will be used to create separate output for each new resampling script run
+  #Automatically updates based on the date run
+run_date <- paste(format(Sys.time(),'%d'), format(Sys.time(),'%B'), format(Sys.time(),'%Y'), "run", sep = " ")
 
-#Create Look up table for Bristol Bay stations 
+
+#####################
+
+#Now read in all specimen tables from FTP'd data 
+dat <- list.files(path, pattern = "CRAB_SPECIMEN", recursive = TRUE) %>% 
+       purrr::map_df(~read.csv(paste0(path, .x)))
+
+#Create Look up table for Bristol Bay stations, including Z-04 
   #hard coding so this can be run on the boat w/out file dependency issues! 
 BBRKC_DIST <- data.frame("A-02","A-03","A-04","A-05","A-06","B-01","B-02","B-03","B-04","B-05","B-06",
                          "B-07","B-08","C-01","C-02","C-03","C-04","C-05","C-06","C-07","C-08","C-09","D-01",
@@ -57,113 +72,131 @@ BBRKC_DIST <- data.frame("A-02","A-03","A-04","A-05","A-06","B-01","B-02","B-03"
                          "I-07","I-08","I-09","I-10","I-11","I-12","I-13","I-14","I-15","I-16","J-01","J-02",
                          "J-03","J-04","J-05","J-06","J-07","J-08","J-09","J-10","J-11","J-12","J-13","J-14",
                          "J-15","J-16","K-01","K-02","K-03","K-04","K-05","K-06","K-07","K-08","K-09","K-10",
-                         "K-11","K-12","K-13","K-14","Z-05")
+                         "K-11","K-12","K-13","K-14","Z-05","Z-04")
 
 #Filter for stations in BBRKC Mgmt district- dropping non-standard stations
-dat %>%
-  filter(!(VESSEL == 162 & HAUL %in% AKK_drop),  
-         !(VESSEL == 134 & HAUL %in% NWX_drop)) %>%
-  filter(str_detect(STATION, "-")) %>% #additional filter to remove any corner stations
-  #Standardize station name notation to ensure there were no station name tablet entry errors  
-  separate(STATION, sep = "-", into = c("col", "row")) %>%
-  mutate(row = sprintf("%02d", as.numeric(row))) %>% #this will drop any "-B" 15 min tow stations
-  unite("STATION", col:row, sep = "-") %>%
-  filter(STATION %in% BBRKC_DIST) -> data 
+data <- dat %>%
+        dplyr::filter(!(VESSEL == 162 & HAUL %in% AKK_drop$HAUL),
+                      !(VESSEL == 134 & HAUL %in% NWE_drop$HAUL)) %>%
+        filter(str_detect(STATION, "-")) %>% #additional filter to remove any corner stations
+        #Standardize station name notation to ensure there were no station name tablet entry errors  
+        separate(STATION, sep = "-", into = c("col", "row", "tow")) %>%
+        filter(is.na(tow)) %>% #this will drop any "-B" 15 min tow stations
+        select(-c(tow)) %>%
+        unite("STATION", col:row, sep = "-") %>%
+        filter(STATION %in% BBRKC_DIST)
+        # Ignore the warning message:
+        # "Expected 3 pieces. Missing pieces filled with `NA`"
 
 #Output csv for stations used in calculating resampling threshold
   #DOES NOT include zero catch stations
-data %>%
-  select(CRUISE, VESSEL, HAUL, STATION) %>%
-  distinct(CRUISE, VESSEL, HAUL, STATION) -> stations
-write.csv(stations, "./Output/Resample_station_list.csv")
+stations <- data %>%
+            select(CRUISE, VESSEL, HAUL, STATION) %>%
+            distinct(CRUISE, VESSEL, HAUL, STATION)
+write.csv(stations, "./Output/Resample_station_list.csv", row.names = FALSE)
 #Please open this csv and visually double check that all non-standard stations were excluded!
 
-#Number of Stations counted towards threshold
-station_count <- nrow(stations)
-stations_remaining <- length(BBRKC_DIST) - station_count 
-#Until we have a record of zero-catch stations in the specimen table, this count
-  #does NOT include zero-catch stations which may have already been sampled
+#Number of Stations remaining in BBRKC mgmt district
+station_count <- nrow(stations) #total # of positive catch stations sampled thus far
+zero_count <- zero_catch %>% #total # of zero crab catch stations sampled thus far
+              filter(STATION %in% BBRKC_DIST) %>%
+              nrow()
+stations_remaining <- length(BBRKC_DIST) - (station_count + zero_count) 
 
 #Number of Mature Females  
-data %>%
-  filter(SPECIES_CODE == 69322,
-         SEX == 2,
-         CLUTCH_SIZE!=0) %>% 
-  summarize(Mat_fem_tot = sum(SAMPLING_FACTOR)) -> total_fem_sum
+total_fem_sum <- data %>%
+                 filter(SPECIES_CODE == 69322,
+                        SEX == 2,
+                        CLUTCH_SIZE!=0) %>% 
+                 summarize(Mat_fem_tot = sum(SAMPLING_FACTOR))
 
 #Sum of females counting towards threshold 
-data %>%
-  filter(SPECIES_CODE == 69322,
-         SEX == 2,
-         CLUTCH_SIZE!=0) %>% 
-  mutate(clutch = ifelse(EGG_CONDITION==2, "Eyed",
-                         ifelse(EGG_CONDITION==4 | EGG_CONDITION==0 & CLUTCH_SIZE==1, "Barren",
-                                ifelse(EGG_CONDITION==5, "Hatching", NA)))) %>%
-  filter(!is.na(clutch)) %>%
-  summarise(clutch_sum = ((round(sum(SAMPLING_FACTOR,na.rm = T))))) -> thresh_fem_sum
+thresh_fem_sum <- data %>%
+                  filter(SPECIES_CODE == 69322,
+                         SEX == 2,
+                         CLUTCH_SIZE!=0) %>% 
+                  mutate(clutch = case_when((EGG_CONDITION==2 ~ "Eyed"),
+                                            ((EGG_CONDITION==4 | EGG_CONDITION==0) & CLUTCH_SIZE==1 ~ "Barren"),
+                                            (EGG_CONDITION==5 ~ "Hatching"),
+                                            TRUE ~ NA)) %>%
+                  filter(!is.na(clutch)) %>%
+                  summarise(clutch_sum = ((round(sum(SAMPLING_FACTOR,na.rm = T)))))
 
 #Threshold (Resampling triggered if > 10%)
 (thresh_fem_sum/total_fem_sum) * 100
 
 #Threshold broken down by clutch codes
-data %>%
-  filter(SPECIES_CODE == 69322,
-         SEX == 2,
-         CLUTCH_SIZE!=0) %>% 
-  mutate(Mat_fem_tot = sum(SAMPLING_FACTOR, na.rm = T)) %>%
-  mutate(clutch = ifelse(EGG_CONDITION==2, "Eyed",
-                         ifelse(EGG_CONDITION==4 | EGG_CONDITION==0 & CLUTCH_SIZE==1, "Barren",
-                                ifelse(EGG_CONDITION==5, "Hatching", NA)))) %>%
-  filter(!is.na(clutch)) %>%
-  group_by(clutch) %>%
-  summarise(thresh_fem_sum = ((round(sum(SAMPLING_FACTOR,na.rm = T)))),
-            clutch_perc = ((round(sum(SAMPLING_FACTOR,na.rm = T)))/mean(Mat_fem_tot))*100,
-            total_mature = mean(Mat_fem_tot)) %>%
-  mutate(thres_total = sum(clutch_perc, na.rm = T)) -> clutch_thresh
+clutch_thresh <- data %>%
+                 filter(SPECIES_CODE == 69322,
+                        SEX == 2,
+                        CLUTCH_SIZE!=0) %>% 
+                 mutate(Mat_fem_tot = sum(SAMPLING_FACTOR, na.rm = T)) %>%
+                 mutate(clutch = case_when((EGG_CONDITION==2 ~ "Eyed"),
+                                           ((EGG_CONDITION==4 | EGG_CONDITION==0) & CLUTCH_SIZE==1 ~ "Barren"),
+                                           (EGG_CONDITION==5 ~ "Hatching"),
+                                           TRUE ~ NA)) %>%
+                 filter(!is.na(clutch)) %>%
+                 group_by(clutch) %>%
+                 summarise(thresh_fem_sum = ((round(sum(SAMPLING_FACTOR,na.rm = T)))),
+                           clutch_perc = ((round(sum(SAMPLING_FACTOR,na.rm = T)))/mean(Mat_fem_tot))*100,
+                           total_mature = mean(Mat_fem_tot)) %>%
+                 mutate(thres_total = sum(clutch_perc, na.rm = T)) 
+
+###########################
 
 #Create summary tables and save as output by run date
   
 #Table 1: total mature females/total unmolted/threshold
-data %>%
-  filter(SPECIES_CODE == 69322,
-         SEX == 2,
-         CLUTCH_SIZE!=0) %>% 
-  mutate(Mat_fem_tot = sum(SAMPLING_FACTOR, na.rm = T)) %>%
-  mutate(clutch = ifelse(EGG_CONDITION==2, "Eyed",
-                         ifelse(EGG_CONDITION==4 | EGG_CONDITION==0 & CLUTCH_SIZE==1, "Barren",
-                                ifelse(EGG_CONDITION==5, "Hatching", NA)))) %>%
-  filter(!is.na(clutch)) %>%
-  summarise(`Total Barren/Hatching Females` = ((round(sum(SAMPLING_FACTOR,na.rm = T)))),
-            `Total Mature Females` = mean(Mat_fem_tot),
-            `Threshold (%)` = ((round(sum(SAMPLING_FACTOR,na.rm = T)))/mean(Mat_fem_tot))*100) %>%
-  gt() %>%
-  tab_header(
-    title = "BBRKC Resampling Threshold",
-    subtitle = run_date) %>%
-  tab_style(locations = cells_body(columns = `Threshold (%)`),
-            style = cell_fill(color = "lightblue")) %>%
-  opt_table_lines() -> table1
+table1 <- data %>%
+          filter(SPECIES_CODE == 69322,
+                 SEX == 2,
+                 CLUTCH_SIZE!=0) %>% 
+          mutate(Mat_fem_tot = sum(SAMPLING_FACTOR, na.rm = T)) %>%
+          mutate(clutch = case_when((EGG_CONDITION==2 ~ "Eyed"),
+                                    ((EGG_CONDITION==4 | EGG_CONDITION==0) & CLUTCH_SIZE==1 ~ "Barren"),
+                                    (EGG_CONDITION==5 ~ "Hatching"),
+                                    TRUE ~ NA)) %>%
+          filter(!is.na(clutch)) %>%
+          summarise(`Total Mature Females` = mean(Mat_fem_tot),
+                    `Total Barren/Eyed/ Hatching Females` = ((round(sum(SAMPLING_FACTOR,na.rm = T)))),
+                    `Threshold (%)` = ((round(sum(SAMPLING_FACTOR,na.rm = T)))/mean(Mat_fem_tot))*100) %>%
+          gt() %>%
+          cols_width(starts_with("Total M") ~ px(150),
+                     starts_with("Total B") ~ px(200),
+                     starts_with("Threshold") ~ px(150)) %>%
+          tab_header(title = "BBRKC Resampling Threshold",
+                     subtitle = paste0(stations_remaining, " stations remaining in BBRKC Mgmt District")) %>%
+          tab_caption(caption = md(run_date)) %>%
+          # tab_footnote(footnote ="*preliminary data that have not been through QA/QC") %>%
+          # tab_options(footnotes.font.size = 10) %>%
+          tab_style(locations = cells_body(columns = `Threshold (%)`),
+                    style = cell_fill(color = "lightblue")) %>%
+          opt_table_lines()
 
 #Table 2: Threshold by clutch codes
-clutch_thresh %>%
-    select(-total_mature, -thres_total) %>%
-    rename(`% of Mature Females` = clutch_perc, `Clutch Code` = clutch,
-           Count = thresh_fem_sum) %>%
-gt() %>%
-  tab_header(
-      title = "BBRKC Resampling Threshold By Clutch Code",
-      subtitle = run_date) %>% 
-      grand_summary_rows(columns = `% of Mature Females`, 
-                       fns = list(label = "RUNNING THRESHOLD", id = "totals", fn = "sum")) %>%
-    tab_style(locations = cells_grand_summary(),
-      style = cell_fill(color = "lightblue")) %>% 
-  opt_table_lines() -> table2
+table2 <- clutch_thresh %>%
+          select(-total_mature, -thres_total) %>%
+          rename(`% of Mature Females` = clutch_perc, `Clutch Code` = clutch,
+                 Count = thresh_fem_sum) %>%
+          gt() %>%
+          # tab_header(title = "BBRKC Resampling Threshold",
+          #            subtitle = paste0(stations_remaining, " stations remaining in BBRKC Mgmt District")) %>%
+          # tab_caption(caption = md(run_date)) %>%
+          grand_summary_rows(columns = `% of Mature Females`, 
+                             fns = list(label = "RUNNING THRESHOLD", id = "totals", fn = "sum")) %>%
+          cols_width(starts_with("Clutch") ~ px(100),
+                     starts_with("Count") ~ px(100),
+                     ends_with("Females") ~ px(150),
+                     everything() ~ px(150)) %>%
+          tab_footnote(footnote ="*preliminary data that have not been through QA/QC") %>%
+          tab_options(footnotes.font.size = 10) %>%
+          tab_style(locations = cells_grand_summary(),
+                    style = cell_fill(color = "lightblue")) %>% 
+          opt_table_lines()
     
 #Now combine tables and save
 listed_tables <- list(table1, table2)
-gt_two_column_layout(listed_tables, output = "save", 
-                     filename = paste0(run_date, "_THRESHOLD.png"),
-                      path = "./Output") 
+gt_two_column_layout(listed_tables, output = "save", vwidth = 518,
+                     filename = "Resampling_threshold_tables.png",
+                     path = "./Output") 
 
-#Delete Access Databases for next upload/run
-unlink("./Data/DataFromBoats/*", recursive = TRUE, force = TRUE)
