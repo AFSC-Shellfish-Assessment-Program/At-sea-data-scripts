@@ -200,3 +200,20 @@ gt_two_column_layout(listed_tables, output = "save", vwidth = 518,
                      filename = "Resampling_threshold_tables.png",
                      path = "./Output") 
 
+#####################################
+#Additional data wrangling to inform resampling decision- NOT needed for table output
+
+#Summarize threshold by shell condition- proxy for proportion of females that have 
+  #molted, but not yet mated (SC 0 -2)
+data %>%
+  filter(SPECIES_CODE == 69322,
+         SEX == 2,
+         CLUTCH_SIZE!=0) %>% 
+  mutate(clutch = case_when((EGG_CONDITION==2 ~ "Eyed"),
+                            ((EGG_CONDITION==4 | EGG_CONDITION==0) & CLUTCH_SIZE==1 ~ "Barren"),
+                            (EGG_CONDITION==5 ~ "Hatching"),
+                            TRUE ~ NA)) %>%
+  filter(!is.na(clutch)) %>%
+  group_by(SHELL_CONDITION) %>%
+  summarise(clutch_sum = ((round(sum(SAMPLING_FACTOR,na.rm = T)))))
+
