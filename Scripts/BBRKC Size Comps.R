@@ -1,6 +1,9 @@
-#Goal: Outputing 1mm binned CL data for BBRKC Females >90mm CL
-  #Output to K. Palof for BBRKC resampling decision
-  #NOTE: Using preliminary, most recent FTP'd data ONLY
+#Goal: Outputing 1mm binned data for BBRKC Females >90mm CL
+  #Generated for K. Palof for 2024 BBRKC resampling decision:
+#1) 1mm binned counts for all BBRKC females >90mm CL
+#2) 1mmm binned counts for BBRKC females >90 mm CL, MATURE ONLY
+
+#NOTE: Using most recent FTP'd data only- Products are preliminary until QA/QC! 
 
 #Author: E. Fedewa
 
@@ -16,12 +19,12 @@ path <- "Y:/KOD_Survey/EBS Shelf/2024/RawData/"
 dat <- list.files(path, pattern = "CRAB_SPECIMEN", recursive = TRUE) %>% 
   purrr::map_df(~read.csv(paste0(path, .x)))
 
-#Designate special project hauls to drop (see resampling script)
+#Designate special project hauls to drop until haul types are assigned (see resampling script)
 AKK_drop <- as.data.frame(c(1:17,23,25,45)) %>% setNames("HAUL")           
 NWE_drop <- as.data.frame(c(1:16,21,23,28:29,37,39,60)) %>% setNames("HAUL")
 
 #Create Look up table for Bristol Bay stations, including Z-04 
-#hard coding so this can be run on the boat w/out file dependency issues! 
+  #hard coding so this can be run on the boat w/out file dependency issues! 
 BBRKC_DIST <- data.frame("A-02","A-03","A-04","A-05","A-06","B-01","B-02","B-03","B-04","B-05","B-06",
                          "B-07","B-08","C-01","C-02","C-03","C-04","C-05","C-06","C-07","C-08","C-09","D-01",
                          "D-02","D-03","D-04","D-05","D-06","D-07","D-08","D-09","D-10","E-01","E-02","E-03",
@@ -47,7 +50,7 @@ data <- dat %>%
   unite("STATION", col:row, sep = "-") %>%
   filter(STATION %in% BBRKC_DIST)
 
-#Compute sum of females >90mm CL by 1mm size bin   
+#Compute sum of all females >90mm CL by 1mm size bin   
 data %>%
   filter(SPECIES_CODE == 69322,
          SEX == 2,
@@ -57,4 +60,19 @@ data %>%
   group_by(SIZE_BIN) %>%
   summarise(NO_CRAB = sum(SAMPLING_FACTOR)) %>%
   write.csv(file="./Output/BBRKC_Size_Comps.csv", row.names=FALSE)
+
+#Compute sum of mature females >90mm CL by 1mm size bin   
+data %>%
+  filter(SPECIES_CODE == 69322,
+         SEX == 2,
+         LENGTH > 90,
+         CLUTCH_SIZE!=0) %>%
+  #create 1mm size bin
+  mutate(SIZE_BIN = floor(LENGTH)) %>% 
+  group_by(SIZE_BIN) %>%
+  summarise(NO_CRAB = sum(SAMPLING_FACTOR)) %>%
+  write.csv(file="./Output/BBRKC_Size_Comps_Mature.csv", row.names=FALSE)
+  
+
+
   
