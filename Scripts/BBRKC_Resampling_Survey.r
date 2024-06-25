@@ -1,11 +1,11 @@
 #### GOALS ----
 #Calculate running sum of mature females within BB
-#Calculate running threshold for resampling (> 10% triggers resampling)
+#Calculate running threshold for resampling (> 10%)
 
 #NOTE: This script should ONLY be used during the survey, as haul files have 
   #not yet been created to filter out special project tows by haul type
 
-#Author: Erin Fedewa
+#Authors: E. Fedewa and S. Hennessey
 
 # load ----
 library(tidyverse)
