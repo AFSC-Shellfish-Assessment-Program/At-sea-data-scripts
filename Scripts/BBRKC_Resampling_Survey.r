@@ -45,7 +45,7 @@ AKK_drop <- as.data.frame(c(1:17,23,25,45)) %>% setNames("HAUL")
 NWE_drop <- as.data.frame(c(1:16,21,23,28:29,39)) %>% setNames("HAUL") 
 # 
 zero_catch <- data.frame(c("J-15", "K-14", "H-16", "I-16", "K-13","L-09","L-08","M-08","N-07",
-                           "M-07","L-07","K-07","A-06","L-06","N-06","N-05","N-04", "B-07")) %>% setNames("STATION")
+                           "M-07","L-07","K-07","A-06","L-06","M-05","N-06","N-05","N-04", "B-07")) %>% setNames("STATION")
 
 
 #Step 4: Update run date
@@ -60,7 +60,7 @@ run_date <- paste(format(Sys.time(),'%d'), format(Sys.time(),'%B'), format(Sys.t
 dat <- list.files(path, pattern = "CRAB_SPECIMEN", recursive = TRUE) %>% 
        purrr::map_df(~read.csv(paste0(path, .x)))
 
-#Create Look up table for Bristol Bay stations, including Z-04 
+#Create Look up table for Bristol Bay stations, excluding Z-04/AZ0504 (136 stations)
   #hard coding so this can be run on the boat w/out file dependency issues! 
 BBRKC_DIST <- data.frame("A-02","A-03","A-04","A-05","A-06","B-01","B-02","B-03","B-04","B-05","B-06",
                          "B-07","B-08","C-01","C-02","C-03","C-04","C-05","C-06","C-07","C-08","C-09","D-01",
@@ -73,7 +73,7 @@ BBRKC_DIST <- data.frame("A-02","A-03","A-04","A-05","A-06","B-01","B-02","B-03"
                          "I-07","I-08","I-09","I-10","I-11","I-12","I-13","I-14","I-15","I-16","J-01","J-02",
                          "J-03","J-04","J-05","J-06","J-07","J-08","J-09","J-10","J-11","J-12","J-13","J-14",
                          "J-15","J-16","K-01","K-02","K-03","K-04","K-05","K-06","K-07","K-08","K-09","K-10",
-                         "K-11","K-12","K-13","K-14","Z-05","Z-04")
+                         "K-11","K-12","K-13","K-14","Z-05")
 
 #Filter for stations in BBRKC Mgmt district- dropping non-standard stations
 data <- dat %>%
@@ -83,7 +83,8 @@ data <- dat %>%
         #Standardize station name notation to ensure there were no station name tablet entry errors  
         separate(STATION, sep = "-", into = c("col", "row", "tow")) %>%
         filter(is.na(tow)) %>% #this will drop any "-B" 15 min tow stations
-        select(-c(tow)) %>%
+        dplyr::select(-tow) %>%
+        mutate(row = str_pad(row, width = 2, pad = "0")) %>% #make sure all names have leading zeros 
         unite("STATION", col:row, sep = "-") %>%
         filter(STATION %in% BBRKC_DIST)
         # Ignore the warning message:
@@ -92,7 +93,7 @@ data <- dat %>%
 #Output csv for stations used in calculating resampling threshold
   #DOES NOT include zero catch stations
 stations <- data %>%
-            select(CRUISE, VESSEL, HAUL, STATION) %>%
+            dplyr::select(CRUISE, VESSEL, HAUL, STATION) %>%
             distinct(CRUISE, VESSEL, HAUL, STATION)
 write.csv(stations, "./Output/Resample_station_list.csv", row.names = FALSE)
 #Please open this csv and visually double check that all non-standard stations were excluded!
@@ -103,6 +104,7 @@ zero_count <- zero_catch %>% #total # of zero crab catch stations sampled thus f
               filter(STATION %in% BBRKC_DIST) %>%
               nrow()
 stations_remaining <- length(BBRKC_DIST) - (station_count + zero_count) 
+
 
 #Number of Mature Females  
 total_fem_sum <- data %>%
@@ -176,7 +178,7 @@ table1 <- data %>%
 
 #Table 2: Threshold by clutch codes
 table2 <- clutch_thresh %>%
-          select(-total_mature, -thres_total) %>%
+          dplyr::select(-total_mature, -thres_total) %>%
           rename(`% of Mature Females` = clutch_perc, `Clutch Code` = clutch,
                  Count = thresh_fem_sum) %>%
           gt() %>%
