@@ -1,11 +1,11 @@
 #Goal: Outputing 1mm binned data for BBRKC Females >90mm CL
   #Generated for K. Palof for 2024 BBRKC resampling decision:
 #1) 1mm binned counts for all BBRKC females >90mm CL
-#2) 1mmm binned counts for BBRKC females >90 mm CL, MATURE ONLY
+#2) 1mm binned counts for BBRKC females >=90 mm CL and males >=95 mm CL with shell condition
 
 #NOTE: Using most recent FTP'd data only- Products are preliminary until QA/QC! 
 
-#Author: E. Fedewa
+#Author: E. Fedewa and E. Ryznar
 
 #load
 library(tidyverse)
@@ -13,7 +13,8 @@ library(tidyverse)
 ################
 
 #Set path for most recent FTP'd data on Kodiak server 
-path <- "Y:/KOD_Survey/EBS Shelf/2024/RawData/"
+#path <- "Y:/KOD_Survey/EBS Shelf/2024/RawData/"
+path <- "./Data/"
 
 #Now read in all specimen tables from FTP'd data 
 dat <- list.files(path, pattern = "CRAB_SPECIMEN", recursive = TRUE) %>% 
@@ -53,29 +54,58 @@ data <- dat %>%
 # Ignore the warning message:
 # "Expected 3 pieces. Missing pieces filled with `NA`"
 
-#Compute sum of all females >90mm CL by 1mm size bin   
+#Compute sum of all females >=90mm CL by 1mm size bin   
 data %>%
   filter(SPECIES_CODE == 69322,
          SEX == 2,
-         LENGTH > 90) %>%
+         LENGTH >= 90) %>%
   #create 1mm size bin
-  mutate(SIZE_BIN = floor(LENGTH)) %>% 
+  mutate(SIZE_BIN = floor(LENGTH)) %>%
+  #create zero catch size bins
+  right_join(expand_grid(SIZE_BIN = min(.$SIZE_BIN):max(.$SIZE_BIN))) %>%
+  replace_na(list(SAMPLING_FACTOR = 0)) %>%
+  #calculate total crab for each size bin
   group_by(SIZE_BIN) %>%
-  summarise(NO_CRAB = sum(SAMPLING_FACTOR)) %>%
-  write.csv(file="./Output/BBRKC_Size_Comps.csv", row.names=FALSE)
+  summarise(TOTAL_CRAB = sum(SAMPLING_FACTOR)) -> fem_sizecomp
+
+  write.csv(fem_sizecomp, file="./Output/BBRKC_Allfemale_Size_Comps.csv", row.names=FALSE)
 
 #Compute sum of mature females >90mm CL by 1mm size bin   
 data %>%
   filter(SPECIES_CODE == 69322,
          SEX == 2,
-         LENGTH > 90,
+         LENGTH >= 90,
          CLUTCH_SIZE!=0) %>%
   #create 1mm size bin
   mutate(SIZE_BIN = floor(LENGTH)) %>% 
+  #create zero catch size bins
+  right_join(expand_grid(SIZE_BIN = min(.$SIZE_BIN):max(.$SIZE_BIN))) %>%
+  replace_na(list(SAMPLING_FACTOR = 0)) %>%
+  #calculate total crab for each size bin
   group_by(SIZE_BIN) %>%
-  summarise(NO_CRAB = sum(SAMPLING_FACTOR)) %>%
-  write.csv(file="./Output/BBRKC_Size_Comps_Mature.csv", row.names=FALSE)
+  summarise(TOTAL_CRAB = sum(SAMPLING_FACTOR)) -> matfem_sizecomp
+
+  write.csv(matfem_sizecomp, file="./Output/BBRKC_Matfemale_Size_Comps.csv", row.names=FALSE)
   
-
-
+#Compute sum of males >=95mm CL by 1mm size bin with shell condition
+  data %>%
+    filter(SPECIES_CODE == 69322,
+           SEX == 1,
+           LENGTH >= 95) %>%
+    #create 1mm size bin
+    mutate(SIZE_BIN = floor(LENGTH),
+           SHELL_TEXT = case_when(SHELL_CONDITION %in% 0:1 ~ "Soft Molting",
+                                  SHELL_CONDITION == 2 ~ "New Hard",
+                                  SHELL_CONDITION == 3 ~ "Old",
+                                  SHELL_CONDITION %in% 4:5 ~ "Very Old")) %>%
+    #create zero catch size*shell condition bins
+    right_join(expand_grid(SIZE_BIN = min(.$SIZE_BIN):max(.$SIZE_BIN),
+                           SHELL_TEXT = unique(.$SHELL_TEXT))) %>%
+    replace_na(list(SAMPLING_FACTOR = 0)) %>%
+    #calculate total crab for each size bin
+    group_by(SIZE_BIN, SHELL_TEXT) %>%
+    summarise(TOTAL_CRAB = sum(SAMPLING_FACTOR)) -> male_sizecomp
+  
+  write.csv(male_sizecomp, file="./Output/BBRKC_AllMale_Size_Comps.csv", row.names=FALSE)
+  
   
