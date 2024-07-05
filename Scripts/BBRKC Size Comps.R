@@ -14,15 +14,15 @@ library(tidyverse)
 
 #Set path for most recent FTP'd data on Kodiak server 
 #path <- "Y:/KOD_Survey/EBS Shelf/2024/RawData/"
-path <- "./Data/"
+path <- "./Data/" # DELETE NWE DATA IN FOLDER BEFORE RUNNING!!
 
 #Now read in all specimen tables from FTP'd data 
 dat <- list.files(path, pattern = "CRAB_SPECIMEN", recursive = TRUE) %>% 
   purrr::map_df(~read.csv(paste0(path, .x)))
 
 #Designate special project hauls to drop until haul types are assigned (see resampling script)
-AKK_drop <- as.data.frame(c(1:17,23,25,45)) %>% setNames("HAUL")           
-NWE_drop <- as.data.frame(c(1:16,21,23,28:29,39)) %>% setNames("HAUL") 
+AKK_drop <- as.data.frame(c(1:17,23,25,45, 124)) %>% setNames("HAUL")   #124 bad tow for AKK     
+NWE_drop <- as.data.frame(c(1:16,21,23,28:29,39, 121)) %>% setNames("HAUL")  #121 bad tow for NWE
 
 #Create Look up table for Bristol Bay stations, excluding Z-04/AZ0504 (136 stations) 
   #hard coding so this can be run on the boat w/out file dependency issues! 
