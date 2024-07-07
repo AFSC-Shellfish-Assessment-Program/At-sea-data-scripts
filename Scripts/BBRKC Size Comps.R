@@ -4,6 +4,8 @@
 #2) 1mm binned counts for BBRKC females >=90 mm CL and males >=95 mm CL with shell condition
 
 #NOTE: Using most recent FTP'd data only- Products are preliminary until QA/QC! 
+# This script should ONLY be used during the survey, as haul files have 
+#not yet been created to filter out special project tows by haul type
 
 #Author: E. Fedewa and E. Ryznar
 
