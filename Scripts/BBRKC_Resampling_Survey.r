@@ -41,8 +41,8 @@ zero_catch <- sheet[-c(1:3), c(5:7)] %>%
 
 #Step 3.5: If connecting to the google sheet doesn't work -- 
   #Update the hauls on the following lines of code and run them instead of lines 25-40 to designate AKK_drop, NWE_drop, and zero_catch
-AKK_drop <- as.data.frame(c(1:17,23,25,45)) %>% setNames("HAUL")           
-NWE_drop <- as.data.frame(c(1:16,21,23,28:29,39)) %>% setNames("HAUL") 
+AKK_drop <- as.data.frame(c(1:17,23,25,45, 124, 133:140)) %>% setNames("HAUL")           
+NWE_drop <- as.data.frame(c(1:16,21,23,28:29,39, 121, 123:124)) %>% setNames("HAUL") 
 # 
 zero_catch <- data.frame(c("J-15", "K-14", "H-16", "I-16", "K-13","L-09","L-08","M-08","N-07",
                            "M-07","L-07","K-07","A-06","L-06","M-05","N-06","N-05","N-04", "B-07")) %>% setNames("STATION")
