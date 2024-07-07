@@ -20,7 +20,7 @@ path <- "./Data/" # DELETE NWE DATA IN FOLDER BEFORE RUNNING!!
 dat <- list.files(path, pattern = "CRAB_SPECIMEN", recursive = TRUE) %>% 
   purrr::map_df(~read.csv(paste0(path, .x)))
 
-#Designate special project hauls/bad tows to drop until haul types are assigned (see resampling script)
+#Designate special project hauls/bad tows to drop until haul types are assigned (see resampling script); bad tows probably won't matter because there isn't data associated with them
 AKK_drop <- as.data.frame(c(1:17,23,25,45, 124, 133:140)) %>% setNames("HAUL")   #124 bad tow for AKK     
 NWE_drop <- as.data.frame(c(1:16,21,23,28:29,39, 121, 123:124)) %>% setNames("HAUL")  #121, 123:124 bad tows for NWE
 
