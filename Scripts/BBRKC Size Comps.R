@@ -45,8 +45,6 @@ BBRKC_DIST <- data.frame("A-02","A-03","A-04","A-05","A-06","B-01","B-02","B-03"
 data <- dat %>%
   dplyr::filter(!(VESSEL == 162 & HAUL %in% AKK_drop$HAUL),
                 !(VESSEL == 134 & HAUL %in% NWE_drop$HAUL)) %>%
-  dplyr::mutate(STATION = case_when((VESSEL == 162 & HAUL == 98) ~ "I-O1", #fixing station input error for AKK haul 98
-                                    TRUE ~ STATION)) %>%
   filter(str_detect(STATION, "-")) %>% #additional filter to remove any corner stations
   #Standardize station name notation to ensure there were no station name tablet entry errors  
   separate(STATION, sep = "-", into = c("col", "row", "tow")) %>%
