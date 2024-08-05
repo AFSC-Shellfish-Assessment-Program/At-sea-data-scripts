@@ -7,23 +7,26 @@
 # This script should ONLY be used during the survey, as haul files have 
 # not yet been created to filter out special project tows by haul type
 
-#Author: S. Hennessey
+# Author: S. Hennessey
 
-#load
+# Load packages
 library(tidyverse)
 
 ################
 
-#Set path for most recent FTP'd data on Kodiak server 
+# Set path for most recent FTP'd data on Kodiak server 
 path <- "Y:/KOD_Survey/EBS Shelf/2024/RawData/"
 
-#Now read in all specimen tables from FTP'd data 
+# Now read in all specimen tables from FTP'd data 
 dat <- list.files(path, pattern = "CRAB_SPECIMEN", recursive = TRUE) %>% 
        purrr::map_df(~read.csv(paste0(path, .x)))
 
-# # Designate special project hauls/bad tows to drop until haul types are assigned (see resampling script); bad tows probably won't matter because there isn't data associated with them
-# AKK_drop <- as.data.frame(c(1:17,23,25,45, 124, 133:140)) %>% setNames("HAUL")   #124 bad tow for AKK     
-# NWE_drop <- as.data.frame(c(1:16,21,23,28:29,39, 121, 123:124)) %>% setNames("HAUL")  #121, 123:124 bad tows for NWE
+# Read in haul metadata 
+haul <- read.csv("./Output/BSFRF_opilio_sampling/BSFRF_opie_haul_metadata.csv")
+
+
+# Visually check stations
+sort(unique(dat$STATION))
 
 # Create Look up table for shelf stratum 61 and slope subarea 6 stations (39 potential stations) 
 # Only 6 of shelf stratum 61 stations will have a side-by-side tow (but include catches from all standard stations),
@@ -34,30 +37,40 @@ stations <- data.frame("R-32", "R-31", "Q-31", "P-32", "P-31", "O-31", "N-31", "
                        "61-20", "61-03", "61-04", "61-17", "61-02", "61-01", "61-08", "61-09", "61-16") 
                        # should there be subarea 6 "-B" stations?? I think so...
 
-#Standardize station naming, filter for stations 
+# Standardize station naming, filter for stations 
 data <- dat %>%
-        filter(str_detect(STATION, "-")) %>% #additional filter to remove any corner stations
-        #Standardize station name notation to ensure there were no station name tablet entry errors
-        separate(STATION, sep = "-", into = c("col", "row", "tow")) %>%
-        dplyr::select(-tow) %>%
-        mutate(row = str_pad(row, width = 2, pad = "0")) %>% #make sure all names have leading zeros
-        unite("STATION", col:row, sep = "-") %>%
-        filter(STATION %in% stations)
-# Ignore the warning message:
-# "Expected 3 pieces. Missing pieces filled with `NA`"
+        filter(STATION %in% stations) %>%
+        filter(SPECIES_CODE == 68580,
+               SEX == 1) %>%
+        select(VESSEL, HAUL, STATION, SPECIES_CODE, SEX, WIDTH, SHELL_CONDITION, SAMPLING_FACTOR) %>%
+        mutate(VESSEL = case_when(VESSEL == 162 ~ "AKK",
+                                  VESSEL == 134 ~ "NWE"))
+        # select(HAUL, STATION, SPECIES_CODE, SEX, LENGTH, WIDTH, SAMPLING_FACTOR) %>%
+        # right_join(., haul %>% select(-c(N_OPILIO)))
+        # Ignore the warning message:
+        # "Expected 3 pieces. Missing pieces filled with `NA`"
+
+haul2 <- data %>%
+         select(HAUL, STATION, SPECIES_CODE, SEX, LENGTH, WIDTH, SAMPLING_FACTOR) %>%
+         right_join(., haul %>% select(-c(N_OPILIO_MALE))) %>%
+         group_by(STATION, VESSEL) %>%
+         summarise(N_OPILIO_MALE = sum(SAMPLING_FACTOR)) %>%
+         replace_na(list(N_OPILIO_MALE = 0)) %>%
+         left_join(haul %>% select(-c(N_OPILIO_MALE)), .)
+
+write.csv(haul2, file="./Output/BSFRF_opilio_sampling/BSFRF_opie_haul_metadata.csv", row.names=FALSE)
 
 # Compute sum of all males by 1mm size bin   
 male_sizecomp <- data %>%
-                 filter(SPECIES_CODE == 68580,
-                        SEX == 1) %>%
                  # create 1mm size bin
-                 mutate(SIZE_BIN = floor(LENGTH)) %>%
+                 mutate(SIZE_BIN = floor(WIDTH)) %>%
                  # create zero catch size bins
-                 right_join(expand_grid(SIZE_BIN = min(.$SIZE_BIN):max(.$SIZE_BIN))) %>%
-                 replace_na(list(SAMPLING_FACTOR = 0)) %>%
+                 # right_join(expand_grid(SIZE_BIN = min(.$SIZE_BIN):max(.$SIZE_BIN))) %>%
+                 # replace_na(list(SAMPLING_FACTOR = 0)) %>%
                  # calculate total crab for each size bin
-                 group_by(SIZE_BIN) %>%
-                 summarise(TOTAL_CRAB = sum(SAMPLING_FACTOR)) 
+                 group_by(STATION, SIZE_BIN) %>%
+                 summarise(TOTAL_CRAB = sum(SAMPLING_FACTOR)) %>%
+                 arrange(STATION, SIZE_BIN)
 
-write.csv(male_sizecomp, file="./Output/BSFRF_opie_Allmale_Size_Comps.csv", row.names=FALSE)
+write.csv(male_sizecomp, file="./Output/BSFRF_opilio_sampling/BSFRF_opie_allmale_size_comps.csv", row.names=FALSE)
 
