@@ -321,7 +321,7 @@ map_tile <- ggarrange(ggarrange(count_map_out[[3]]$idw_plot,
                                 nrow = 3, ncol = 2)) %>%
               annotate_figure(top = text_grob("2024 Snow Crab Counts", size = 20, face="bold"))
 
-ggsave("./Output/opie_matsex_count_maps.pdf", height = 16, width = 16, units = "in")
+ggsave("./Output/opilio_matsex_count_maps.pdf", height = 16, width = 16, units = "in")
 
 
 
