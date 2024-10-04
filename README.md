@@ -3,11 +3,11 @@
 ## This repository contains script to assess the following while the eastern and northern Bering Sea bottom trawl surveys are underway: 
 - The proportion of female red king crab having not yet completed the molt/mate cycle. If 10% of mature females have not yet molted/mated, a resampling will be considered at 20 stations in Bristol Bay _(BBRKC_Resampling_Survey.R)_  
 
-- Look up historical catch data for a given station and/or year of interest using the GAPsurvey R package _(Get catch history.R)_    
+- Look up historical catch data for a given station and/or year of interest using the GAPsurvey R package _(Get_catch_history.R)_    
 
-- Develop preliminary at-sea estimates of the number of snow crab and tanner crab caught. These estimates are sent to stock assessment authors as updates throughout the EBS survey _(Snow Crab Count.R)_  
+- Develop preliminary at-sea estimates of the number of snow crab and tanner crab caught. These estimates are sent to stock assessment authors as updates throughout the EBS survey _(Snow_Crab_Count.R)_  
   
-- Test a pilot special project addressing the efficacy of a bin subsampling protocol. This pilot special project was run on Legs 3 and 4 of the 2023 bottom trawl survey _(Bin Subsampling.R)_  
+- Test a pilot special project addressing the efficacy of a bin subsampling protocol. This pilot special project was run on Legs 3 and 4 of the 2023 bottom trawl survey _(Bin_Subsampling.R)_  
 
 
 ## Shellfish Assessment Program Resampling Protocol
