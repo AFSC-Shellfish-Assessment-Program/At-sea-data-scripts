@@ -1,14 +1,14 @@
 # Goals of at-sea data scripts
 
 ## This repository contains script to assess the following while the eastern and northern Bering Sea bottom trawl surveys are underway: 
-- The proportion of female red king crab having not yet completed the molt/mate cycle. If 10% of mature females have not yet molted/mated, a resampling will be considered at 20 stations in Bristol Bay  
-&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; - BBRKC_Resampling_Survey.R
-- Look up historical catch data for a given station and/or year of interest using the GAPsurvey R package  
-&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; - Get catch history.R
-- Develop preliminary at-sea estimates of the number of snow crab and tanner crab caught. These estimates are sent to stock assessment authors as updates throughout the EBS survey  
-&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; - Snow Crab Count.R
-- Test a pilot special project addressing the efficacy of a bin subsampling protocol. This pilot special project was run on Legs 3 and 4 of the 2023 bottom trawl survey  
-&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; - Bin Subsampling.R
+- The proportion of female red king crab having not yet completed the molt/mate cycle. If 10% of mature females have not yet molted/mated, a resampling will be considered at 20 stations in Bristol Bay _(BBRKC_Resampling_Survey.R)_  
+
+- Look up historical catch data for a given station and/or year of interest using the GAPsurvey R package _(Get catch history.R)_    
+
+- Develop preliminary at-sea estimates of the number of snow crab and tanner crab caught. These estimates are sent to stock assessment authors as updates throughout the EBS survey _(Snow Crab Count.R)_  
+  
+- Test a pilot special project addressing the efficacy of a bin subsampling protocol. This pilot special project was run on Legs 3 and 4 of the 2023 bottom trawl survey _(Bin Subsampling.R)_  
+
 
 ## Shellfish Assessment Program Resampling Protocol
 In colder years, a portion of the female Bristol Bay red king crab population has not yet completed the molt-mate cycle when Bristol Bay is surveyed during the NMFS eastern Bering Sea bottom trawl survey.  Under these conditions, a subset of the Bristol Bay stations has historically been resampled later in the summer to improve the accuracy of the size composition data for post-molt Bristol Bay red king crab females. Secondary goals are to assess the reproductive status and abundance of these females after the molt-mate cycle is complete. 
