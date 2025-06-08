@@ -22,17 +22,15 @@ library(googlesheets4)
 current_year <- 2025
 path <- paste0("Y:/KOD_Survey/EBS Shelf/", current_year, "/RawData/")
 
-
 ## Update run date to create separate output for each new resampling script run
 # - automatically updates based on the date run
 run_date <- paste(format(Sys.time(),'%d'), format(Sys.time(),'%B'), format(Sys.time(),'%Y'), "run", sep = " ")
 
 
-## Specify 0-catch stations from GoogleSheet
+## Specify zero-catch stations from GoogleSheet
 #**https://docs.google.com/spreadsheets/d/1yz9ANWaPO8634mDtfAJf8szXRdk0GyGwBDdS5cC418k/**
-zero_catch <- data.frame(c("STATION_NAMES_GO_HERE!!")) %>% 
+zero_catch <- data.frame(c("I-16, K-14", "M-08", "L-09", "L-08", "K-09", "J-09")) %>% 
               setNames("STATION")
-
 
 ## Read in all specimen tables from FTP'd data 
 dat <- list.files(path, pattern = "CRAB_SPECIMEN", recursive = TRUE) %>% 
@@ -60,18 +58,18 @@ BBRKC_DIST <- data.frame("A-02","A-03","A-04","A-05","A-06","B-01","B-02","B-03"
 #**or make sure they're fixed in the chunk of code below**
 print(unique(dat$STATION))
 
-
-# Filter for stations in BBRKC Mgmt district - dropping non-standard stations
+#Drop non-standard stations and subset for BBRKC Mgmt district 
 data <- dat %>%
-        filter(str_detect(STATION, "-")) %>% # remove any corner stations
-        # Standardize station name notation to ensure there were no station name tablet entry errors  
-        suppressWarnings(separate(STATION, sep = "-", into = c("col", "row", "tow"))) %>%
-        filter(is.na(tow)) %>% # drop any "-B" 15 min tow stations
-        dplyr::select(-tow) %>%
-        mutate(row = str_pad(row, width = 2, pad = "0")) %>% # make sure all names have leading zeros 
-        unite("STATION", col:row, sep = "-") %>%
-        filter(STATION %in% BBRKC_DIST)
-
+  #remove any corner stations
+  filter(str_detect(STATION, "-")) %>% 
+  #remove any 15 minute tows (i.e. X-X-B notation)  
+  mutate(standard_station = ifelse(str_count(STATION, "-") == 2, F, T)) %>%
+  filter(standard_station == TRUE) %>%
+  #make sure all stations have leading zeros
+  separate(STATION, sep = "-", into = c("col", "row")) %>%
+  mutate(row = str_pad(row, width = 2, pad = "0")) %>% # make sure all names have leading zeros
+  unite("STATION", col:row, sep = "-") %>%
+  filter(STATION %in% BBRKC_DIST)
 
 # Output csv for stations used in calculating resampling threshold
 # DOES NOT include zero catch stations
@@ -80,7 +78,6 @@ stations <- data %>%
             distinct(CRUISE, VESSEL, HAUL, STATION)
 write.csv(stations, "./Output/Resample_station_list.csv", row.names = FALSE)
 #**Please open this csv and visually double check that all non-standard stations were excluded!**
-
 
 
 ################################################################################
@@ -115,6 +112,7 @@ thresh_fem_sum <- data %>%
 # Threshold (Resampling triggered if > 10%)
 (thresh_fem_sum/total_fem_sum) * 100
 
+
 # Threshold broken down by clutch codes
 clutch_thresh <- data %>%
                  filter(SPECIES_CODE == 69322,
@@ -133,7 +131,6 @@ clutch_thresh <- data %>%
                  mutate(thres_total = sum(clutch_perc, na.rm = T)) 
 
 
-
 ################################################################################
 ## Create summary tables and save as output by run date ------------------------
   
@@ -147,10 +144,9 @@ table1 <- data %>%
                                     ((EGG_CONDITION==4 | EGG_CONDITION==0) & CLUTCH_SIZE==1 ~ "Barren"),
                                     (EGG_CONDITION==5 ~ "Hatching"),
                                     TRUE ~ NA)) %>%
-          filter(!is.na(clutch)) %>%
-          summarise(`Total Mature Females` = mean(Mat_fem_tot),
-                    `Total Barren/Eyed/ Hatching Females` = ((round(sum(SAMPLING_FACTOR,na.rm = T)))),
-                    `Threshold (%)` = ((round(sum(SAMPLING_FACTOR,na.rm = T)))/mean(Mat_fem_tot))*100) %>%
+          summarise(`Total Mature Females` = mean(Mat_fem_tot, na.rm = T),
+                    `Total Barren/Eyed/ Hatching Females` = ((round(sum(SAMPLING_FACTOR[!is.na(clutch)],na.rm = T)))),
+                    `Threshold (%)` = ((round(sum(SAMPLING_FACTOR[!is.na(clutch)],na.rm = T)))/mean(Mat_fem_tot))*100) %>%
           gt() %>%
           cols_width(starts_with("Total M") ~ px(150),
                      starts_with("Total B") ~ px(200),
@@ -163,6 +159,11 @@ table1 <- data %>%
           tab_style(locations = cells_body(columns = `Threshold (%)`),
                     style = cell_fill(color = "lightblue")) %>%
           opt_table_lines()
+
+#**If threshold in line 113 = 0, run lines 165-166 below to print table 1 only and save** 
+  #**output, otherwise skip lines 165-166 and run line 170+ to create table 2**
+gtsave(table1, filename = "Resampling_threshold_tables.png",
+                     path = "./Output") 
 
 
 # Table 2: Threshold by clutch codes
