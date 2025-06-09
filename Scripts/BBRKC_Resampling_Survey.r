@@ -29,7 +29,7 @@ run_date <- paste(format(Sys.time(),'%d'), format(Sys.time(),'%B'), format(Sys.t
 
 ## Specify zero-catch stations from GoogleSheet
 #**https://docs.google.com/spreadsheets/d/1yz9ANWaPO8634mDtfAJf8szXRdk0GyGwBDdS5cC418k/**
-zero_catch <- data.frame(c("I-16, K-14", "M-08", "L-09", "L-08", "K-09", "J-09")) %>% 
+zero_catch <- data.frame(c("I-16, K-14", "M-08", "L-09", "L-08", "K-09", "J-09", "A-06")) %>% 
               setNames("STATION")
 
 ## Read in all specimen tables from FTP'd data 
