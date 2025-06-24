@@ -29,7 +29,8 @@ run_date <- paste(format(Sys.time(),'%d'), format(Sys.time(),'%B'), format(Sys.t
 
 ## Specify zero-catch stations from GoogleSheet
 #**https://docs.google.com/spreadsheets/d/1yz9ANWaPO8634mDtfAJf8szXRdk0GyGwBDdS5cC418k/**
-zero_catch <- data.frame(c("I-16, K-14", "M-08", "L-09", "L-08", "K-09", "J-09", "A-06")) %>% 
+zero_catch <- data.frame(c("I-16", "K-14", "M-08", "L-09", "L-08", "K-09", "J-09", "A-06", "L-07",
+                           "M-07", "N-07", "N-06", "N-04", "N-05", "O-03", "L-03")) %>% 
               setNames("STATION")
 
 ## Read in all specimen tables from FTP'd data 
@@ -60,16 +61,16 @@ print(unique(dat$STATION))
 
 #Drop non-standard stations and subset for BBRKC Mgmt district 
 data <- dat %>%
-  #remove any corner stations
-  filter(str_detect(STATION, "-")) %>% 
-  #remove any 15 minute tows (i.e. X-X-B notation)  
-  mutate(standard_station = ifelse(str_count(STATION, "-") == 2, F, T)) %>%
-  filter(standard_station == TRUE) %>%
-  #make sure all stations have leading zeros
-  separate(STATION, sep = "-", into = c("col", "row")) %>%
-  mutate(row = str_pad(row, width = 2, pad = "0")) %>% # make sure all names have leading zeros
-  unite("STATION", col:row, sep = "-") %>%
-  filter(STATION %in% BBRKC_DIST)
+        #remove any corner stations
+        filter(str_detect(STATION, "-")) %>% 
+        #remove any 15 minute tows (i.e. X-X-B notation)  
+        mutate(standard_station = ifelse(str_count(STATION, "-") == 2, F, T)) %>%
+        filter(standard_station == TRUE) %>%
+        #make sure all stations have leading zeros
+        separate(STATION, sep = "-", into = c("col", "row")) %>%
+        mutate(row = str_pad(row, width = 2, pad = "0")) %>% # make sure all names have leading zeros
+        unite("STATION", col:row, sep = "-") %>%
+        filter(STATION %in% BBRKC_DIST)
 
 # Output csv for stations used in calculating resampling threshold
 # DOES NOT include zero catch stations
@@ -94,14 +95,14 @@ stations_remaining <- length(BBRKC_DIST) - (station_count + zero_count)
 total_fem_sum <- data %>%
                  filter(SPECIES_CODE == 69322,
                         SEX == 2,
-                        CLUTCH_SIZE!=0) %>% 
+                        CLUTCH_SIZE != 0) %>% 
                  summarize(Mat_fem_tot = sum(SAMPLING_FACTOR))
 
 # Sum of females counting towards threshold 
 thresh_fem_sum <- data %>%
                   filter(SPECIES_CODE == 69322,
                          SEX == 2,
-                         CLUTCH_SIZE!=0) %>% 
+                         CLUTCH_SIZE != 0) %>% 
                     mutate(clutch = case_when((EGG_CONDITION == 2 ~ "Eyed"),
                                               (((EGG_CONDITION == 4 & CLUTCH_SIZE > 0) | (EGG_CONDITION == 0 & CLUTCH_SIZE == 1)) ~ "Barren"),
                                               (EGG_CONDITION == 5 ~ "Hatching"),
@@ -117,11 +118,11 @@ thresh_fem_sum <- data %>%
 clutch_thresh <- data %>%
                  filter(SPECIES_CODE == 69322,
                         SEX == 2,
-                        CLUTCH_SIZE!=0) %>% 
+                        CLUTCH_SIZE != 0) %>% 
                  mutate(Mat_fem_tot = sum(SAMPLING_FACTOR, na.rm = T)) %>%
-                 mutate(clutch = case_when((EGG_CONDITION==2 ~ "Eyed"),
-                                           ((EGG_CONDITION==4 | EGG_CONDITION==0) & CLUTCH_SIZE==1 ~ "Barren"),
-                                           (EGG_CONDITION==5 ~ "Hatching"),
+                 mutate(clutch = case_when((EGG_CONDITION == 2 ~ "Eyed"),
+                                           ((EGG_CONDITION == 4 | EGG_CONDITION == 0) & CLUTCH_SIZE == 1 ~ "Barren"),
+                                           (EGG_CONDITION == 5 ~ "Hatching"),
                                            TRUE ~ NA)) %>%
                  filter(!is.na(clutch)) %>%
                  group_by(clutch) %>%
@@ -138,11 +139,11 @@ clutch_thresh <- data %>%
 table1 <- data %>%
           filter(SPECIES_CODE == 69322,
                  SEX == 2,
-                 CLUTCH_SIZE!=0) %>% 
+                 CLUTCH_SIZE != 0) %>% 
           mutate(Mat_fem_tot = sum(SAMPLING_FACTOR, na.rm = T),
-                 clutch = case_when((EGG_CONDITION==2 ~ "Eyed"),
-                                    ((EGG_CONDITION==4 | EGG_CONDITION==0) & CLUTCH_SIZE==1 ~ "Barren"),
-                                    (EGG_CONDITION==5 ~ "Hatching"),
+                 clutch = case_when((EGG_CONDITION == 2 ~ "Eyed"),
+                                    ((EGG_CONDITION == 4 | EGG_CONDITION==0) & CLUTCH_SIZE == 1 ~ "Barren"),
+                                    (EGG_CONDITION == 5 ~ "Hatching"),
                                     TRUE ~ NA)) %>%
           summarise(`Total Mature Females` = mean(Mat_fem_tot, na.rm = T),
                     `Total Barren/Eyed/ Hatching Females` = ((round(sum(SAMPLING_FACTOR[!is.na(clutch)],na.rm = T)))),
@@ -162,8 +163,7 @@ table1 <- data %>%
 
 #**If threshold in line 113 = 0, run lines 165-166 below to print table 1 only and save** 
   #**output, otherwise skip lines 165-166 and run line 170+ to create table 2**
-gtsave(table1, filename = "Resampling_threshold_tables.png",
-                     path = "./Output") 
+gtsave(table1, filename = "Resampling_threshold_tables.png", path = "./Output") 
 
 
 # Table 2: Threshold by clutch codes
@@ -204,10 +204,10 @@ gt_two_column_layout(listed_tables, output = "save", vwidth = 518,
 data %>%
   filter(SPECIES_CODE == 69322,
          SEX == 2,
-         CLUTCH_SIZE!=0) %>% 
-  mutate(clutch = case_when((EGG_CONDITION==2 ~ "Eyed"),
-                            ((EGG_CONDITION==4 | EGG_CONDITION==0) & CLUTCH_SIZE==1 ~ "Barren"),
-                            (EGG_CONDITION==5 ~ "Hatching"),
+         CLUTCH_SIZE != 0) %>% 
+  mutate(clutch = case_when((EGG_CONDITION == 2 ~ "Eyed"),
+                            ((EGG_CONDITION == 4 | EGG_CONDITION == 0) & CLUTCH_SIZE == 1 ~ "Barren"),
+                            (EGG_CONDITION == 5 ~ "Hatching"),
                             TRUE ~ NA)) %>%
   filter(!is.na(clutch)) %>%
   group_by(SHELL_CONDITION) %>%
