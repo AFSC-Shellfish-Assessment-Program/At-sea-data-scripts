@@ -43,7 +43,7 @@ bind_rows(AKK_L1, AKK_L2, AKK_L3, NWX_L1, NWX_L2, NWX_L3) %>%
             #for several EBS tows in error- corrected after FTP 
   #filter(!(VESSEL == 162 & HAUL %in% AKK_drop$HAUL),
                 #!(VESSEL == 134 & HAUL %in% NWE_drop$HAUL)) %>%
-  summarise(Total = sum(NUMBER_CRAB)) -> snow25 #209366 snow crab
+  summarise(Total = sum(NUMBER_CRAB)) -> snow25 #238743 snow crab
 
 #Step 4: Merge data frames and sum number of tanner crab caught (from tablet)
 bind_rows(AKK_L1, AKK_L2, AKK_L3, NWX_L1, NWX_L2, NWX_L3) %>% 
@@ -52,7 +52,7 @@ bind_rows(AKK_L1, AKK_L2, AKK_L3, NWX_L1, NWX_L2, NWX_L3) %>%
            #for several EBS tows in error- corrected after FTP 
   #filter(!(VESSEL == 162 & HAUL %in% AKK_drop$HAUL),
         # !(VESSEL == 134 & HAUL %in% NWE_drop$HAUL)) %>%
-  summarise(Total = sum(NUMBER_CRAB)) -> tanner25 #34072 tanner crab
+  summarise(Total = sum(NUMBER_CRAB)) -> tanner25 #34146 tanner crab
 
 #Quick plot 
 #Append new data to timeseries 
@@ -133,7 +133,7 @@ bind_rows(AKK_L1_s, AKK_L2_s, AKK_L3_s, NWX_L1_s, NWX_L2_s, NWX_L3_s) %>%
          CRUISE %in% c(202501, 202502)) %>%
   #filter(!(VESSEL == 162 & HAUL %in% AKK_drop$HAUL),
         # !(VESSEL == 134 & HAUL %in% NWE_drop$HAUL)) %>%
-  count() -> pref #1004 males, 53% new shell
+  count() -> pref #1108 males, 55% new shell
 
 #Number of PIBKC
 bind_rows(AKK_L1_s, AKK_L2_s, AKK_L3_s, NWX_L1_s, NWX_L2_s, NWX_L3_s) %>% 
