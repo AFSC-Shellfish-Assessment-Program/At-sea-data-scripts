@@ -8,25 +8,32 @@
 # - need to make a way to detect and bind catch/specimen from 2 tablets, 
 #   but also make sure they're from 2 different tablets, not the same one re-extracted
 # 
-# - maybe do a function?? and for each haul, print a preliminary error report (ie.
+# - make into functions, and for each haul, print a preliminary error report (ie.
 #   "no errors" or "this is a 0-catch station, correct?") with a Y/N option, and then
 #   ask if you want to move the files to the "clean" folder....that way can say N
 #   for ones that you need to go back to but clear the ones that are good
-# - and then once fixed, re-error check? and have that append to the separate 
-#   error report for that haul (I think we need separate ones so there can be an
-#   organized followup that says good to go...can we get it to read old errors
-#   and have the user automatically say yes this is ok??)
+#   - and then once fixed, re-error check? and have that append to the separate 
+#     error report for that haul (I think we need separate ones so there can be an
+#     organized followup that says good to go...can we get it to read old errors
+#     and have the user automatically say yes this is ok??)
 
 # - look into txt file interfacing w/ R....or maybe .csv??
+
+#**- when extracting files, do they all have the *exact* same timestamp, or can they vary???
+#    - need to check this when running through all hauls as a test!
+#    - also need to BOLD in protocol to please re-extract ALL files if making changes....
 
 
 #**Write up a step-by-step narrative in code comments!*
 
 
+
 ## Check 0-catch stations and correct haul-station combos needs to be done separate
 ## but can verify vessel/cruise #s in on-board script
 
-# Compare total catch vs. estimated weights by species...
+#**Compare total catch vs. estimated weights by species...?*
+#* would need to do something with joining the raw files to get the subsample groups/weights
+#* with specimens -- can expand weights from there and ID lg in "small" etc.
 
 # How to append .txt files??
 #**What's the best method for disseminating code fixes if we need some?? GitHub? Just via email??*
@@ -42,7 +49,33 @@
 # - would any other haul-level summaries be helpful?
 
 
-#### START HERE ##
+
+#**MINI FUNCTIONS TO WRITE:* 
+# - Output error report
+# - Save error? Might help eliminate some lines...
+# - Move files to clean/archive?
+# - Run intro checks...(ie. all files in queue)
+# - Run file checks (for given haul)
+#   - ID duplicates as separate nested?
+# - Run specimen checks
+# ....what else...
+#
+#
+#**Things for main function to need:*
+# *make sure to incorporate error checks/messages to validate function inputs!
+# - vessel
+# - leg
+# - recorder (object class)
+# - check that paths are valid? (but will be pre-specified...unless good reason for folks to be able to change)
+# - 
+
+
+
+
+### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ###
+# START HERE #### 
+### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ###
+
 # Load libraries ----
   library(tidyverse)
   library(purrr)
@@ -65,53 +98,54 @@
   out_dir <- paste0(path, vessel, "/", leg, "/") # clean files, archive, error reports
   #**sFTP_dir?**
 
-
+  
+  
+### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ###
 # Start global file checks ----
+### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ###
+  
 ## compile temporary/placeholder "haul" file? ----
 # - ID 0-catch stations
 # - where do I want to draw this from?? just the files in the queue? or all hauls so far?
 
 
-# # Read in ALL files in "to be checked" folder
-# files_all <- 
-
-# Read in all HAUL files first to make list of which hauls to be checked... 
-# - extract haul #, tablet, and timestamp for use down the line....
-  haul_info_all <- data.frame(FILE = list.files(in_dir, pattern = "_HAUL_", recursive = TRUE)) %>%
-                   separate_wider_delim(FILE, "_HAUL", names = c("TABLET", "HAUL_NUMBER", "DATETIME")) %>%
-                   mutate(DATETIME = str_sub(DATETIME, 2, 9),
-                          TABLET_STR = str_remove(str_sub(TABLET, 1, 6), "_$")) %>%
-                   # join with all unique tablet/timestamp combos in queue files to verify have a haul file for them all... 
-                   # (which should be present for every good haul)
-                   full_join(., data.frame(FILE = list.files(in_dir, recursive = TRUE)) %>%
-                                   mutate(TABLET_STR = str_remove(str_sub(FILE, 1, 6), "_$"), 
-                                          DATETIME = str_sub(FILE, -12, -5)) %>%
-                                   select(-FILE) %>%
-                                   distinct(),
-                             by = join_by(DATETIME, TABLET_STR)) %>%
-                   # order by haul#, tablet, timestamp:
-                   mutate(haul_temp = as.numeric(HAUL_NUMBER),
-                          datetime_temp = as.numeric(DATETIME)) %>%
-                   arrange(haul_temp, TABLET, datetime_temp) %>%
-                   select(-haul_temp, -datetime_temp)
-
-# throw warning if there's a TABLET_STR/DATETIME combo that doesn't have a 'RAW_HAUL' file in the queue
-  if(nrow(haul_info_all %>% filter(is.na(HAUL_NUMBER))) > 0){
-      cat(col_red(paste0("'RAW_HAUL' files for the following tablet and timestamp combinations are missing from the QAQC queue folder,\nwhile other files with this combination are present:\n")))
-      
-    # Make object with tablet/timestamp combos with no RAW_HAUL file
-      no_haul <- haul_info_all %>% filter(is.na(HAUL_NUMBER))
-      
-    # Print error for each tablet/timestamp combination 
-      for(i in 1:nrow(no_haul)){
-        cat(col_red(paste0("   - Tablet starting with '", no_haul$TABLET_STR[i], "' and timestamp '", no_haul$DATETIME[i], "'\n")))
-      }
+##**Might need to do a special file check here first!* 
+##**inventory all files in queue and make sure a timestamp doesn't change with extraction variation....*
+##  - if tablet and haul number are same, and list # of files that matches isn't complete, 
+##     see if there's a complementary timestamp for that haul that makes the set....
+##  - might add complication to moving files, but we'll see? I think at end, can just move by haul# and don't need timestamp
   
-      cat(col_red(paste0("\nPlease double check the files in the QAQC queue folder and make sure all relevant tablet files are present before proceeding.\n")))
-      cat(col_red(paste0("\nStopping the error checking protocol.\n\n")))
+  
+# Read in all files first to make list of which hauls to be checked... 
+# - extract haul #, tablet, and timestamp for use down the line....
+  # haul_info_all <- data.frame(FILE = list.files(in_dir, pattern = "_HAUL_", recursive = TRUE)) %>%
+  #                  separate_wider_delim(FILE, "_HAUL", names = c("TABLET", "HAUL_NUMBER", "DATETIME")) %>%
+  #                  mutate(DATETIME = str_sub(DATETIME, 2, 9),
+  #                         TABLET_STR = str_remove(str_sub(TABLET, 1, 6), "_$")) %>%
+  #                  # join with all unique tablet/timestamp combos in queue files to verify have a haul file for them all...
+  #                  # (which should be present for every good haul)
+  #                  full_join(., data.frame(FILE = list.files(in_dir, recursive = TRUE)) %>%
+  #                                  mutate(TABLET_STR = str_remove(str_sub(FILE, 1, 6), "_$"),
+  #                                         DATETIME = str_sub(FILE, -12, -5)) %>%
+  #                                  select(-FILE) %>%
+  #                                  distinct(),
+  #                            by = join_by(DATETIME, TABLET_STR)) %>%
+  #                  # order by haul#, tablet, timestamp:
+  #                  mutate(haul_temp = as.numeric(HAUL_NUMBER),
+  #                         datetime_temp = as.numeric(DATETIME)) %>%
+  #                  arrange(haul_temp, TABLET, datetime_temp) %>%
+  #                  select(-haul_temp, -datetime_temp)
+  
+  haul_info_all <- data.frame(FILE = list.files(in_dir, pattern = ".csv", recursive = TRUE)) %>%
+                   separate_wider_delim(FILE, 
+                                        delim = regex("(_HAUL|_CRAB_SPECIMEN_|_CRAB_CATCH_)"), 
+                                        names = c("TABLET", "HAUL_NUMBER"),
+                                        too_many = "merge") %>%
+                   mutate(DATETIME = str_sub(HAUL_NUMBER, -12, -5),
+                          HAUL_NUMBER = str_sub(HAUL_NUMBER, 1, 4)) %>%
+                   distinct() %>%
+                   arrange(HAUL_NUMBER, TABLET, DATETIME)
 
-    #**some sort of break here if this check is automated??*
-  }
 
   
 #**popup to verify # and which hauls to be checked?? Ie. there are 4 hauls to be checked, correct?*
@@ -146,8 +180,10 @@
   }
 
 
-
+### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ###
 # Start haul-specific file checks ----
+### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ###
+  
 #**# Loop over hauls here....START OF ERROR CHECKING**
   # for(h in 1:length(hauls)){
   #   haul_number <- hauls[h] # haul_number <- unique(haul_info$HAUL_NUMBER)[h]
@@ -168,14 +204,16 @@
 #**PRINT SOMETHING HERE for commentary?* "starting xx checks for haul xx...."
 
 
+### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ###
 ## Create error report template ----  
+### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ###
 ##**CREATE ERROR VECTOR/ITERATOR FOR HAUL*
   errors <- data.frame(ERROR_TYPE = character(),
                        ERROR_MESSAGE = character(),
                        stringsAsFactors = FALSE)
 
 
-##**READ IN/CHECK FOR ERROR REPORT HERE??*
+##**READ IN/CHECK FOR ERROR REPORT HERE*
 ##  - Make note of if one exists, then have a "RE-CHECK" indicated in the file??
 ##  - MAKE NOTE IN PROTOCOL --> please don't rename things!!!!
 ##  - Will also need to collect some other haul/time info for report output...come up with header format
@@ -190,6 +228,8 @@
     #...then what...create "recheck" header for appending...
     
   } else if(length(report_file) == 0){
+    
+    #**DO SOMETHING HERE...*
     # if it doesn't exist already, create new file....
     # need some standard things here for header etc. 
     # How do delim line breaks, blank lines, etc? can we preserve those with output/input through R?
@@ -204,89 +244,76 @@
       break()
   }
 
+  
+  #*MOVED THIS CHECK FROM FURTHER UP....* (used to be at line 148)
+  # # throw warning if there's a TABLET_STR/DATETIME combo that doesn't have a 'RAW_HAUL' file in the queue
+  # if(nrow(haul_info_all %>% filter(is.na(HAUL_NUMBER))) > 0){
+  #   cat(col_red(paste0("'RAW_HAUL' files for the following tablet and timestamp combinations are missing from the QAQC queue folder,\nwhile other files with this combination are present:\n")))
+  #   
+  #   # Make object with tablet/timestamp combos with no RAW_HAUL file
+  #   no_haul <- haul_info_all %>% filter(is.na(HAUL_NUMBER))
+  #   
+  #   # Print error for each tablet/timestamp combination 
+  #   for(i in 1:nrow(no_haul)){
+  #     cat(col_red(paste0("   - Tablet starting with '", no_haul$TABLET_STR[i], "' and timestamp '", no_haul$DATETIME[i], "'\n")))
+  #   }
+  #   
+  #   cat(col_red(paste0("\nPlease double check the files in the QAQC queue folder and make sure all relevant tablet files are present before proceeding.\n")))
+  #   cat(col_red(paste0("\nStopping the error checking protocol.\n\n")))
+  #   
+  #   #**some sort of break here if this check is automated??*
+  # }
+
+  
 
 
-## check tablet duplicates ----
-#**if same tablet/haul_number combo, pick the most recent datetime and archive the "older" files that have presumably been edited*
-# NEED TO TEST IF MULTIPLE VERSIONS FROM MULTIPLE TABLETS...function and error messages
-  if(nrow(haul_info %>% select(-DATETIME) %>% distinct()) < nrow(haul_info)){
-      cat(col_red(paste0("\nDuplicate files for Haul ", haul_id, " were detected with different timestamps.\n")))
-      
-      move_selection <- menu(c("Yes", "No"), title = "\nWould you like to move the files with the earlier timestamp(s) to the 'Archive' folder?")
-      
-      if(move_selection == 1){
-          cat("\nYou selected 'Yes'.\n\n")
-      
-        ## move extra/older files to the archive folder
-    
-        # ID tablet/timestamp that's duplicated, and which to move
-          duplicate_files <- haul_info %>% 
-                             group_by(TABLET) %>% 
-                             mutate(N_TIMESTAMP = n()) %>%
-                             filter(N_TIMESTAMP > 1)
-          
-          archive_tablets <- unique(duplicate_files$TABLET)
-          archive_timestamps <- duplicate_files %>%
-                                filter(!as.numeric(DATETIME) == max(as.numeric(DATETIME))) %>%
-                                pull(DATETIME)
-                    
-          to_archive <- list.files(in_dir, pattern = archive_timestamps, recursive = TRUE) %>% # ok if multiple timestamps, would need to iterate... probs for multiple tablets too?
-                        map(~file.rename(from = paste0(in_dir, .x),
-                                         to = paste0(out_dir, "_archive/", .x)))
-        
-        # Update haul_info to remove archived files from the object
-          haul_info <- haul_info %>% filter(!DATETIME %in% archive_timestamps)
-          haul_info_all <- haul_info_all %>% filter(!DATETIME %in% archive_timestamps)
-        
-        # Add note to Error Report
-          error_iter <- nrow(errors) + 1
-          errors[error_iter, 1] <- "File"
-          errors[error_iter, 2] <- paste0("Duplicate files were detected from tablet '", archive_tablets, "'. '", archive_tablets, "' files for Haul ", haul_id, " with the timestamp '", archive_timestamps, "' were moved to the ", vessel, " ", leg, " 'Archive' folder.")
-      
-        # Print message
-          cat("Extra files for Haul ", haul_id, " have been moved to the ", vessel, " ", leg, " 'Archive' folder.\n\n", sep = "")
-      }
-      
-      if(move_selection == 2){
-          cat("\nYou selected 'No'.\n\n", sep = "")
-          cat(col_red("Stopping the error checking protocol.\n", sep = ""))
-          cat(col_red(paste0("Please review the tablet files for Haul ", haul_id, " and make sure only the most current versions are in the queue.\n\n", sep = "")))
-          
-          break()
-      }
-  }
-
-
-# read in all files for first haul....
+# Start on first haul of ones in folder
+# - read in all files for first haul....
   files <- list.files(in_dir, pattern = haul_number, recursive = TRUE)
-#**also read in any previous error report??* can use file.append() to add on to it w/ the recheck
+#**also read in any previous error report - see above* can use file.append() to add on to it w/ the recheck
 #*and maybe note somewhere that there's a recheck/edits made? indicate some sort of repeat section/header??
 
+
+### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ###  
+## Check station ID inputs/vessel/cruise ----
+### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ###
+## - cruise should be fine for now, but if do NBS will need to think about how to incorporate that switch....
+## - would need a .csv with all "good" inputs and similar ones to change or something?
+##   - maybe this doesn't matter so much since I can update with real-time haul file....
+##**- should this go farther down once we've made sure only the relevant files are in there?*
   
-## Check station ID inputs? ----  
   
   
+### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ###
 ## ID any note files ----
+### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ###
   if(length(list.files(in_dir, pattern = paste0(haul_number, "_NOTES_"), recursive = TRUE)) > 0){
       notes <- list.files(in_dir, pattern = paste0(haul_number, "_NOTES_"), recursive = TRUE) %>%
                map_df(~read.csv(paste0(in_dir, .x))) %>%
                select(HAUL_ID, NOTE_TABLE, NOTES)
   }
-# parse into specimen notes and xx notes by NOTE_TABLE??
+# parse into specimen notes and xx notes by NOTE_TABLE for error report??
 # catch_sample_notes - bin subsample
 # specimen_notes - rotten eggs, etc. 
 # haul_notes - 0-catch station
 
 
 
-# Start on first haul of ones in folder
+
+
+
+### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ###
+## ID potential zero-catch station ----
+### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ###
+#
+#**MAKE THIS A FUNCTION TO SOURCE*
+#
 # - if 0-catch, have a little popup Y/N to confirm 0-catch, if Y, outputs that 
 #   as "error report" and moves to next haul
-
-## ID potential zero-catch station ----
-#**MAKE THIS A FUNCTION TO SOURCE??*
-#*Also, do a 2nd iteration of this when just RAW_HAUL is present without a note?? 
-#*  and verify 0-catch and say please add a note??
+#
+# - Also, do a 2nd iteration of this when just RAW_HAUL is present without a note?? 
+#  and verify 0-catch and say please add a note??
+  
   if(length(files) == 2 & exists("notes")){
       no_catch_selection <- menu(c("Yes", "No"), title = paste0("\nWas Haul ", haul_id, " a zero-catch station?"))
     
@@ -351,19 +378,233 @@
   }
 
 
+  
+  
+  
+  
 ## make sure all necessary files are present for the haul -- throw error if not
 # (0-catch check will have moved on to next haul....so this should only need to flag incomplete hauls that aren't 0-catch)
 
+### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ###
 ## Inventory files for the given haul by tablet output type ----
-  files_inventory <- list(files[grepl(paste0("_CRAB_CATCH_", haul_number), files)],
-                          files[grepl(paste0("_CRAB_SPECIMEN_", haul_number), files)],
-                          files[grepl(paste0(haul_number, "_HAUL_"), files)],
-                          files[grepl(paste0(haul_number, "_SAMPLE_0"), files)],
-                          files[grepl(paste0(haul_number, "_SAMPLE_VALUES_"), files)],
-                          files[grepl(paste0(haul_number, "_SPECIMEN_0"), files)],
-                          files[grepl(paste0(haul_number, "_SPECIMEN_BIOMETRICS_"), files)])
+### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ###
+  
+  file_name <- c("_CRAB_CATCH_","_CRAB_SPECIMEN_", 
+                 "_HAUL_", "_SAMPLE_0", "_SAMPLE_VALUES_", 
+                 "_SPECIMEN_0", "_SPECIMEN_BIOMETRICS_")
+  file_type <- c("'CRAB_CATCH'", "'CRAB_SPECIMEN'", 
+                 "'RAW_HAUL'", "'RAW_SAMPLE'", "'RAW_SAMPLE_VALUES'", 
+                 "'RAW_SPECIMEN'", "'RAW_SPECIMEN_BIOMETRICS'")
+  
+  files_all <- c()
+  
+  for(i in 1:length(file_name)){
+    
+    if(i %in% c(1:2)){
+      files_all <- rbind(files_all, 
+                         data.frame(FILE = files[grepl(paste0(file_name[i], haul_number), files)]) %>%
+                           separate_wider_delim(FILE, 
+                                                delim = regex("(_CRAB_CATCH_|_CRAB_SPECIMEN_)"), 
+                                                names = c("TABLET", "HAUL_NUMBER"),
+                                                too_many = "merge") %>%
+                           mutate(DATETIME = str_sub(HAUL_NUMBER, -12, -5),
+                                  HAUL_NUMBER = str_sub(HAUL_NUMBER, 1, 4)) %>%
+                           mutate(TYPE = file_type[i])) %>%
+                  arrange(HAUL_NUMBER, TABLET, DATETIME, TYPE)
+    }
 
+    if(i > 2){
+      files_all <- rbind(files_all, 
+                         data.frame(FILE = files[grepl(paste0(haul_number, file_name[i]), files)]) %>%
+                           separate_wider_delim(FILE, 
+                                                delim = c("_HAUL"), 
+                                                names = c("TABLET", "HAUL_NUMBER"),
+                                                too_many = "merge") %>%
+                           mutate(DATETIME = str_sub(HAUL_NUMBER, -12, -5),
+                                  HAUL_NUMBER = str_sub(HAUL_NUMBER, 1, 4)) %>%
+                           mutate(TYPE = file_type[i])) %>%
+                   arrange(HAUL_NUMBER, TABLET, DATETIME, TYPE)
+    }
+  }
+    
 
+  
+  # find all unique tablet/datetime combos
+  # - verify if have each of the types
+  # - and then if not, is there a complementary set?
+  #   (assign group_IDs) -- what should the "minute" buffer be on this??
+  # and THEN report on which ones are missing, if any...
+  # and then check for duplicates from a tablet?
+  tablet_combos <- files_all %>%
+                   group_by(HAUL_NUMBER, TABLET, DATETIME) %>%
+                   summarise(N_FILES = n(), .groups = "drop_last") %>%
+                   mutate(GROUP_ID = NA) %>%
+                   # ID potential files that should be grouped despite having different timestamp...
+                   group_by(TABLET) %>%
+                   mutate(DIFF = c(0, diff(as.numeric(DATETIME))),
+                          GROUP = case_when(DIFF < 5 ~ 1,
+                                            TRUE ~ NA)) %>%
+                   ungroup()
+  
+  combo_id <- 1
+  
+  for(i in 1:nrow(tablet_combos)){
+    # if all file types are represented for a tablet/timestamp combo...
+    if(!FALSE %in% (file_type %in% unique(files_all %>% 
+                                            right_join(., tablet_combos[i,],
+                                                       by = join_by(TABLET, HAUL_NUMBER, DATETIME)) %>%
+                                            pull(TYPE)))){
+      
+      tablet_combos <- tablet_combos %>%
+                       mutate(GROUP_ID = case_when(TABLET == pull(tablet_combos[i, "TABLET"]) & DATETIME == pull(tablet_combos[i, "DATETIME"]) ~ combo_id,
+                                                   TRUE ~ GROUP_ID))
+      combo_id <- combo_id + 1
+    } 
+  }
+
+  # ok so now from remaining ones....  
+  # tablet_combos2 <- tablet_combos %>% 
+  #                   filter(is.na(GROUP_ID))
+  # files_all2 <- files_all %>% 
+  #               right_join(., tablet_combos2)
+  
+  # if there's some that might be a group....
+  if(nrow(tablet_combos %>% 
+          filter(is.na(GROUP_ID),
+                 !is.na(GROUP))) > 0){
+    
+    temp_combos <- tablet_combos %>% 
+                   filter(is.na(GROUP_ID),
+                          !is.na(GROUP))
+    
+    # check to make sure there aren't any duplicate types??
+    # if(!FALSE %in% (file_type %in% unique(files_all2 %>% 
+    #                                       right_join(., tablet_combos2 %>% filter(is.na(GROUP)),
+    #                                                  by = join_by(TABLET, HAUL_NUMBER, DATETIME)) %>%
+    #                                       pull(TYPE)))){
+      
+      tablet_combos <- tablet_combos %>%
+                       mutate(GROUP_ID = case_when(TABLET %in% temp_combos$TABLET & DATETIME %in% temp_combos$DATETIME ~ combo_id,
+                                                   TRUE ~ GROUP_ID))
+      combo_id <- combo_id + 1
+    # } 
+  }
+  
+  
+  # give group to any that are left...
+  if(nrow(tablet_combos %>% 
+          filter(is.na(GROUP_ID))) > 0){
+    
+    temp_combos <- tablet_combos %>% filter(is.na(GROUP_ID))
+    
+    for(i in 1:nrow(temp_combos)){
+      tablet_combos <- tablet_combos %>%
+                       mutate(GROUP_ID = case_when(TABLET == temp_combos$TABLET & DATETIME == temp_combos$DATETIME ~ combo_id,
+                                                   TRUE ~ GROUP_ID))
+      combo_id <- combo_id + 1
+    }
+  }
+  
+  
+  
+## OK SO, now everyone has groups.....now ID duplicate sets....
+  haul_info <- haul_info %>% 
+               right_join(., tablet_combos %>% select(-GROUP, -DIFF, -N_FILES))
+  
+
+  
+### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ###    
+## check tablet duplicates ----
+### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ###
+#**if same tablet/haul_number combo, pick the most recent datetime and archive the "older" files that have presumably been edited*
+# NEED TO TEST IF MULTIPLE VERSIONS FROM MULTIPLE TABLETS...function and error messages
+  if(nrow(haul_info %>% select(-DATETIME, -GROUP_ID) %>% distinct()) < nrow(haul_info %>% select(-DATETIME) %>% distinct())){
+    cat(col_red(paste0("\nDuplicate files for Haul ", haul_id, " were detected with different timestamps.\n")))
+    
+    move_selection <- menu(c("Yes", "No"), title = "\nWould you like to move the files with the earlier timestamp(s) to the 'Archive' folder?")
+    
+    if(move_selection == 1){
+      cat("\nYou selected 'Yes'.\n\n")
+      
+      ## move extra/older files to the archive folder
+      
+      # ID tablet/timestamp that's duplicated, and which to move
+      duplicate_files <- haul_info %>% 
+                         # select(-DATETIME) %>%
+                         # distinct() %>%
+                         group_by(TABLET) %>% 
+                         mutate(N_TIMESTAMP = n()) %>%
+                         filter(N_TIMESTAMP > 1)
+      
+      archive_tablets <- unique(duplicate_files$TABLET)
+      archive_timestamps <- duplicate_files %>%
+                            group_by(GROUP_ID) %>%
+                            mutate(MAX_DATETIME = max(as.numeric(DATETIME))) %>%
+                            ungroup() %>%
+                            filter(!MAX_DATETIME == max(MAX_DATETIME)) %>%
+                            pull(DATETIME)
+      
+      to_archive <- list.files(in_dir, pattern = paste(archive_timestamps, collapse = "|")) %>% ##DO i need to do anything for multiple tablets???
+                    map(~file.rename(from = paste0(in_dir, .x),
+                                     to = paste0(out_dir, "_archive/", .x)))
+      
+      # Update haul_info to remove archived files from the object
+      haul_info <- haul_info %>% filter(!(TABLET %in% archive_tablets & DATETIME %in% archive_timestamps))
+      haul_info_all <- haul_info_all %>% filter(!(TABLET %in% archive_tablets & DATETIME %in% archive_timestamps))
+      
+      # Add note to Error Report
+      #**I think this actually needs to be done regardless of yes/no selection??* -- modify
+      error_iter <- nrow(errors) + 1
+      errors[error_iter, 1] <- "File"
+      errors[error_iter, 2] <- paste0("Duplicate files were detected from tablet '", archive_tablets, "'. '", archive_tablets, "' files for Haul ", haul_id, " with the timestamp '", archive_timestamps, "' were moved to the ", vessel, " ", leg, " 'Archive' folder.")
+      
+      # Print message
+      cat("Extra files for Haul ", haul_id, " have been moved to the ", vessel, " ", leg, " 'Archive' folder.\n\n", sep = "")
+    }
+    
+    if(move_selection == 2){
+      cat("\nYou selected 'No'.\n\n", sep = "")
+      cat(col_red("Stopping the error checking protocol.\n", sep = ""))
+      cat(col_red(paste0("Please review the tablet files for Haul ", haul_id, " and make sure only the most current versions are in the queue.\n\n", sep = "")))
+      
+      break()
+    }
+  }
+  
+  
+  
+  
+  
+# NOW, for all remaining files/groups (just for most recent suite for each tablet, if multiple) 
+# run checks and inventory what's incomplete
+  
+  files_inventory <- files_all %>% 
+                     right_join(., haul_info)
+  
+  # files_inventory <- list(files[grepl(paste0("_CRAB_CATCH_", haul_number), files)],
+  #                         files[grepl(paste0("_CRAB_SPECIMEN_", haul_number), files)],
+  #                         files[grepl(paste0(haul_number, "_HAUL_"), files)],
+  #                         files[grepl(paste0(haul_number, "_SAMPLE_0"), files)],
+  #                         files[grepl(paste0(haul_number, "_SAMPLE_VALUES_"), files)],
+  #                         files[grepl(paste0(haul_number, "_SPECIMEN_0"), files)],
+  #                         files[grepl(paste0(haul_number, "_SPECIMEN_BIOMETRICS_"), files)])
+  # 
+  #   
+  # haul_info_test <- data.frame(FILE = list.files(in_dir, pattern = ".csv", recursive = TRUE)) %>%
+  #                   separate_wider_delim(FILE, 
+  #                                        delim = regex("(_HAUL|_CRAB_)"), 
+  #                                        names = c("TABLET", "HAUL_NUMBER"),
+  #                                        too_many = "merge") %>%
+  #                   mutate(DATETIME = str_sub(HAUL_NUMBER, -12, -5),
+  #                          HAUL_NUMBER = str_sub(HAUL_NUMBER, 1, 4)) %>%
+  #                   distinct() %>%
+  #                   arrange(HAUL_NUMBER, TABLET, DATETIME)
+  
+  
+  
+#**Maybe don't have to iterate through file type here anymore? Can do group instead?*
+#*and can ID which one is missing by filtering/excluding fule types....
+  
 # Check if any tablet file type has fewer files than the rest (excluding NOTES files),
 # and if so, flag which files are missing from the QA/QC queue/add to error report
   if(any(lengths(files_inventory) < max(lengths(files_inventory)))){
@@ -386,14 +627,14 @@
             # Check which tablet/timestamp combos are missing 
               if(length(files_inventory[[i]]) == 0){
                 missing_combos <- haul_info %>% 
-                                  select(-HAUL_NUMBER, TABLET_STR)
+                                  select(-HAUL_NUMBER)
               } 
             
               if(length(files_inventory[[i]]) > 0 & i %in% 1:2){
                 missing_combos <- data.frame(TABLET = unlist(files_inventory[[i]] %>% map(~unlist(str_split(.x, "_CRAB_"))[1])),
                                              DATETIME = unlist(str_sub(files_inventory[[i]], -12, -5))) %>%
                                   mutate(PRESENT = 1) %>%
-                                  full_join(., haul_info %>% select(-HAUL_NUMBER, TABLET_STR), by = join_by(TABLET, DATETIME))
+                                  full_join(., haul_info %>% select(-HAUL_NUMBER), by = join_by(TABLET, DATETIME))
 
               }
             
@@ -401,7 +642,7 @@
                 missing_combos <- data.frame(TABLET = unlist(files_inventory[[i]] %>% map(~unlist(str_split(.x, paste0("_HAUL", haul_number)))[1])),
                                              DATETIME = unlist(str_sub(files_inventory[[i]], -12, -5))) %>%
                                   mutate(PRESENT = 1) %>%
-                                  full_join(., haul_info %>% select(-HAUL_NUMBER, -TABLET_STR), by = join_by(TABLET, DATETIME))
+                                  full_join(., haul_info %>% select(-HAUL_NUMBER), by = join_by(TABLET, DATETIME))
               }
               
             
@@ -451,7 +692,22 @@
 
 
 
+  
+  
+
+  
+  
+  
+  
+  
+  
+  
+  
+  
+### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ###
 ## Start catch/specimen checks ----
+### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ###
+  
 # Designate "catch" and "specimen" dfs to be checked
 #**re-calculate/combine catch numbers by species....sum/double check the rounding on #specimens* 
 #*-- should automatically take care of 2 tablet scenarios...
@@ -488,8 +744,16 @@
 # - small mature females (especially mature barren RKC/BKC)
 # - RKC: shell 3:5 and EC 1
 
+  
+### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ###
+#**SOURCE SPECIMEN CHECK FUNCTION HERE* (see below)
+### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ###
+  
 
 
+### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ###  
+##**AFTER CHECKS ARE DONE:*    
+### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ###
 # summary of any notes associated with haul (e.g. saw rotting clutches, etc.)
 
 # output summary, say will pop up, check it then verify if good/not
@@ -604,9 +868,11 @@
 # Y/N move on to next haul?
 
 
-
+  
+### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ###
 # At the end: ----
-
+### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ###
+  
 #**STOP -- take a look at the error report. Do you need to make any changes??*
 #*If no, do you want to move the files?? if yes, do you want to archive the existing files for the haul??
 
@@ -648,37 +914,16 @@
 
 
 
-# --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- 
-# SPECIMEN CHECK FUNCTION ----
-# Write function
-  error_chk <- function(method, specimen_table, catch_summary, potlifts, haul, cpue){
-    
-    print("CHECKING VESSEL AND CRUISE...")
-    
-    # 1) Does cruise number match 202501?
-      if(FALSE %in% unique(specimen_table$CRUISE == 202301)){
-        print("ERROR: wrong cruise number")
-      }
-    
-    
-    # 2) Does the vessel # match the vessels utilized in the survey?
   
-        if(FALSE %in% (unique(specimen_table$VESSEL) %in% c("Vesteraalen")) == TRUE){
-          print("ERROR: vessel numbers entered do not match survey vessels")
-        }
-    
-      
-      print("Inventory of catch by cruise and vessel")
-      invent1 <- specimen_table %>%
-        dplyr::group_by(VESSEL, CRUISE) %>%
-        dplyr::reframe(COUNT = sum(SAMPLING_FACTOR),
-                       N = n()) %>%
-        as.data.frame()
-      print(invent1)
-    
-    
+  
+  
+  
+### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ###
+# SPECIMEN CHECK FUNCTION ----
+### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ###
+  specimen_chk <- function(specimen, catch){
+
     print("CHECKING SPECIES CODES AND SEX...")
-    
     
    ##**need to incorporate crab species into this!!*
     # 3) Do species codes match RKC code 69322?"
@@ -895,22 +1140,22 @@
     print("COMPARING SPECIMEN TABLE WITH CATCH SUMMARY...")
     
     # 22) Does the number of crab and number of entries match between the specimen table and catch summary?
-      if(method == "POT"){
-        spec_sum <- specimen_table %>%
-                    dplyr::group_by(CRUISE, VESSEL, POT_ID, SPECIES_CODE) %>%
-                    dplyr::reframe(NUMBER_CRAB = sum(SAMPLING_FACTOR),
-                                   N_ENTRIES = n())
-        
-        catch_sum <- catch_summary %>%
-                     dplyr::select(CRUISE, VESSEL, POT_ID, SPECIES_CODE, NUMBER_CRAB, N_ENTRIES)
-        
-        if(TRUE %in% is.na(suppressMessages(right_join(spec_sum, catch_sum))) == TRUE){
-          print("ERROR: POT: number of crab and number of entries do not 
-                   match between summarized specimen table and catch summary")
-        }
-      } 
+      # if(method == "POT"){
+      #   spec_sum <- specimen_table %>%
+      #               dplyr::group_by(CRUISE, VESSEL, POT_ID, SPECIES_CODE) %>%
+      #               dplyr::reframe(NUMBER_CRAB = sum(SAMPLING_FACTOR),
+      #                              N_ENTRIES = n())
+      #   
+      #   catch_sum <- catch_summary %>%
+      #                dplyr::select(CRUISE, VESSEL, POT_ID, SPECIES_CODE, NUMBER_CRAB, N_ENTRIES)
+      #   
+      #   if(TRUE %in% is.na(suppressMessages(right_join(spec_sum, catch_sum))) == TRUE){
+      #     print("ERROR: POT: number of crab and number of entries do not 
+      #              match between summarized specimen table and catch summary")
+      #   }
+      # } 
   
-      if(method == "TRAWL"){
+      # if(method == "TRAWL"){
         spec_sum <- specimen_table %>%
           dplyr::group_by(CRUISE, VESSEL, HAUL, SPECIES_CODE) %>%
           dplyr::reframe(NUMBER_CRAB = sum(SAMPLING_FACTOR),
@@ -923,28 +1168,7 @@
           print("ERROR: TRAWL: number of crab and number of entries do not 
                      match between summarized specimen table and catch summary")
         } 
-      }
-    
-    
-    # print("CHECKING COORDINATES...")
-    # 
-    #   # Transform potlifts data to correct crs
-    #   mapdat <- potlifts %>%
-    #             sf::st_as_sf(coords = c(x = "LON_DD", y = "LAT_DD"), crs = sf::st_crs(4326)) %>%
-    #             sf::st_transform(crs = map.crs)
-    #   
-    #   # Map coordinates
-    #   coords <- ggplot() +
-    #             geom_sf(data = st_as_sf(BB_strata), fill = NA, color = "black", linewidth = 1) +
-    #             geom_sf(data = st_as_sf(RKCSA_sub), fill = NA, color = "red", alpha = 0.5, linewidth = 1) +
-    #             geom_sf(data = st_as_sf(RKCSA), fill = NA, color = "red", alpha = 0.5, linewidth = 1) +
-    #             geom_sf(data = mapdat, shape = 19, size = 1.5, colour = "black", stat = "identity", 
-    #                     position = "identity")+
-    #             ggtitle("Pot coordinate check")+
-    #             theme_bw()
-    #   
-    #   print(coords)
-  
+      # }
   }    
 
   
