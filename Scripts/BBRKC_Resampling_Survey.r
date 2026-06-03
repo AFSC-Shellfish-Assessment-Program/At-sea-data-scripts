@@ -20,9 +20,8 @@
     library(gtExtras)
     library(data.table)
   
-  # Set path for FTP'd data folder on Kodiak server 
+  # Set current year
     current_year <- 2026
-    path <- paste0("Y:/KOD_Survey/EBS Shelf/", current_year, "/RawData/")
   
   # Update run date to create separate output for each new resampling script run
   # - automatically updates based on the date run
@@ -56,9 +55,6 @@
   
   # Format table
     haul_table <- haul %>%
-                  # # Filter for standard haul types, standard gear, good performance
-                  # filter(HAUL_TYPE %in% c(3, 17),
-                  #        PERFORMANCE >= 0)  %>%
                   rename(VESSEL = VESSEL_ID,
                          STATION_ID = STATION) %>%
                   left_join(., stations)
@@ -70,47 +66,28 @@
 
 # ID zero-catch stations -------------------------------------------------------
     
-    # Read in real-time haul data
-      haul_table <- read.csv("Y:/KOD_Survey/EBS Shelf/Data_Processing/Data/haul_atsea.csv") # %>%
-                    # Filter for standard haul types, standard gear, good performance
-                    filter(HAUL_TYPE %in% c(3, 17),
-                           PERFORMANCE >= 0)
+  # Read in real-time haul data
+    haul_table <- read.csv("Y:/KOD_Survey/EBS Shelf/Data_Processing/Data/haul_atsea.csv") %>%
+                  # Filter for standard haul types, standard gear, good performance
+                  filter(HAUL_TYPE %in% c(3, 17),
+                         PERFORMANCE >= 0)
     
-    # Set data directory
-      path <- paste0("Y:/KOD_Survey/EBS Shelf/", current_year, "/RawData/")
+  # Set data directory
+    path <- paste0("Y:/KOD_Survey/EBS Shelf/", current_year, "/RawData/")
     
-    # Read in all 'CATCH_db.csv' and 'SPECIMEN_db.csv' files from FTPd data
-      catch <- list.files(path, pattern = "CATCH_db", recursive = TRUE) %>%
-               map_df(~read.csv(paste0(path, .x)))
+  # Read in all 'CATCH_db.csv' and 'SPECIMEN_db.csv' files from FTPd data
+    catch <- list.files(path, pattern = "CATCH_db", recursive = TRUE) %>%
+             map_df(~read.csv(paste0(path, .x)))
     
-      specimen <- list.files(path, pattern = "SPECIMEN_db", recursive = TRUE) %>%
-                  map_df(~read.csv(paste0(path, .x)))
+    specimen <- list.files(path, pattern = "SPECIMEN_db", recursive = TRUE) %>%
+                map_df(~read.csv(paste0(path, .x)))
     
     
-    # Make lookup table of recording device IDs by vessel
-      device_lookup <- catch %>%
-                       select(VESSEL, RECORDING_DEVICE) %>%
-                       drop_na() %>%
-                       distinct()
-    
-    # Read in combined RAW HAUL files and join to hauls from CATCH files
-    # - any row with NA for CRUISE and VESSEL is a 0-catch
-      all_hauls <- list.files(path, pattern = "_HAUL_", recursive = TRUE) %>%
-                   map_df(~suppressWarnings(read.csv(paste0(path, .x)))) %>%
-                   select(HAUL, HAUL_ID, STATION, RECORDING_DEVICE) %>%
-                   left_join(., catch %>%
-                               select(VESSEL, CRUISE, HAUL, HAUL_ID, RECORDING_DEVICE, STATION) %>%
-                               distinct()) %>%
-                   mutate(NO_CATCH = case_when((is.na(CRUISE) & is.na(VESSEL)) ~ 1, # ID 0-catch stations
-                                               TRUE ~ 0)) %>% 
-                   select(-VESSEL) %>%
-                   left_join(., device_lookup) %>% # add CRUISE and VESSEL to 0-catch stations
-                   select(CRUISE, VESSEL, HAUL, HAUL_ID, STATION, RECORDING_DEVICE, NO_CATCH) %>%
-                   arrange(VESSEL, HAUL, STATION, HAUL_ID) 
-     
-  # Specify zero-catch stations
-    zero_catch <- all_hauls %>% 
-                  filter(NO_CATCH == 1)
+  # Make lookup table of recording device IDs by vessel
+    device_lookup <- catch %>%
+                     select(VESSEL, RECORDING_DEVICE) %>%
+                     drop_na() %>%
+                     distinct()
 
   # Create look up table for Bristol Bay stations, excluding Z-04/AZ0504 (136 stations)
   # - hard coding so this can be run on the boat w/out file dependency issues! 
@@ -146,24 +123,19 @@
             unite("STATION", col:row, sep = "-") %>%
             filter(STATION %in% BBRKC_DIST)
   
-  # Output .csv for stations used in calculating resampling threshold
+  # Output dataframe for stations used in calculating resampling threshold
   # DOES NOT include zero catch stations
     stations <- data %>%
                 select(CRUISE, VESSEL, HAUL, STATION) %>%
                 distinct(CRUISE, VESSEL, HAUL, STATION)
-  write.csv(stations, "./Output/Resample_station_list.csv", row.names = FALSE)
-  #**Please open this csv and visually double check that all non-standard stations were excluded!**
+    stations #**Please double check that all non-standard stations were excluded!**
 
 
 
 # Calculate numbers ------------------------------------------------------------
 
   # Number of Stations remaining in BBRKC mgmt district
-    station_count <- nrow(stations) # total # of positive catch stations sampled thus far
-    zero_count <- zero_catch %>% # total # of zero crab catch stations sampled thus far
-                  filter(STATION %in% BBRKC_DIST) %>%
-                  nrow()
-    stations_remaining <- length(BBRKC_DIST) - (station_count + zero_count) 
+    stations_remaining <- length(BBRKC_DIST) - nrow(haul_table %>% filter(STATION_ID %in% BBRKC_DIST)) 
 
 
   # Number of Mature Females  
@@ -236,9 +208,9 @@
                         style = cell_fill(color = "lightblue")) %>%
               opt_table_lines()
   
-  #**If threshold in line 188 = 0, run line 240 below to print table 1 only* 
-  #**and save output. Otherwise, skip line 240 and run line 244+ to create table 2*
-    gtsave(table1, filename = "Resampling_threshold_tables.png", path = "./Output") 
+  # #**If threshold in line 188 = 0, run line 240 below to print table 1 only* 
+  # #**and save output. Otherwise, skip line 240 and run line 244+ to create table 2*
+  #   gtsave(table1, filename = "Resampling_threshold_tables.png", path = "./Output") 
   
   
   # Table 2: Threshold by clutch codes
