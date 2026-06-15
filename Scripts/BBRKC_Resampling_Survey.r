@@ -109,6 +109,7 @@
   #**go back and fix any names that don't conform to the standard convention,**
   #**or make sure they're fixed in the chunk of code below**
     print(unique(specimen$STATION))
+  length(unique(specimen$STATION))
   
   # Drop non-standard stations and subset for BBRKC Mgmt district 
     data <- specimen %>%
@@ -130,7 +131,7 @@
                 distinct(CRUISE, VESSEL, HAUL, STATION)
     stations #**Please double check that all non-standard stations were excluded!**
 
-
+unique(specimen$STATION[!(specimen$STATION %in% stations$STATION)]) # isolating stations that were excluded
 
 # Calculate numbers ------------------------------------------------------------
 
